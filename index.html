@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Expert Vision | Live Server</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-900 text-white flex items-center justify-center h-screen">
+    <div class="bg-slate-800 p-8 rounded-2xl shadow-2xl w-96 border border-slate-700">
+        <h1 class="text-center text-xl font-bold mb-6 text-cyan-400">PAINEL OFICIAL</h1>
+        
+        <div id="status-box" class="p-4 bg-slate-900 rounded-lg mb-4 border border-slate-700">
+            <p class="text-[10px] text-slate-500 uppercase font-bold text-center">Status da Conexão</p>
+            <p id="api-status" class="text-yellow-500 font-bold text-center mt-1 text-sm">Aguardando Token...</p>
+        </div>
+
+        <input id="token-input" type="password" placeholder="Cole seu Token (Read+Trade)" 
+               class="w-full p-3 bg-slate-950 border border-slate-700 rounded mb-4 text-cyan-400 outline-none focus:border-cyan-500 text-center">
+        
+        <button onclick="conectar()" class="w-full py-4 bg-cyan-600 hover:bg-cyan-500 rounded-xl font-bold transition uppercase tracking-tighter">
+            Conectar na Deriv
+        </button>
+
+        <div id="result" class="mt-4 hidden p-4 bg-green-900/30 border border-green-500 text-green-400 rounded-xl text-center">
+            <p class="text-[10px] uppercase font-black">Autenticado com Sucesso</p>
+            <p id="balance-val" class="text-2xl font-mono font-bold mt-1">$ 0.00</p>
+        </div>
+    </div>
+
+    <script>
+        function conectar() {
+            const token = document.getElementById('token-input').value.trim();
+            const status = document.getElementById('api-status');
+            const app_id = '33e1UPy4LXVMuK8F8PU3t';
+
+            if(!token) return alert("Insira o token!");
+
+            // Agora como site (HTTPS), a Deriv aceita a conexão WebSocket!
+            const ws = new WebSocket(`wss://ws.binaryws.com/websockets/v3?app_id=${app_id}`);
+
+            ws.onopen = () => ws.send(JSON.stringify({ authorize: token }));
+
+            ws.onmessage = (msg) => {
+                const data = JSON.parse(msg.data);
+                if (data.error) {
+                    status.innerText = "ERRO: " + data.error.message;
+                    status.className = "text-red-500 font-bold text-center";
+                    return;
+                }
+                if (data.msg_type === 'authorize') {
+                    status.innerText = "CONECTADO!";
+                    status.className = "text-green-500 font-bold text-center";
+                    document.getElementById('result').classList.remove('hidden');
+                    ws.send(JSON.stringify({ balance: 1, subscribe: 1 }));
+                }
+                if (data.msg_type === 'balance') {
+                    document.getElementById('balance-val').innerText = `$ ${data.balance.balance.toFixed(2)}`;
+                }
+            };
+        }
+    </script>
+</body>
+</html>
