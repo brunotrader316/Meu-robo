@@ -2,61 +2,220 @@
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
-    <title>Expert Vision | Live Server</title>
+    <title>Expert Vision Pro | Deriv Intelligence</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body { background: #020617; color: #f1f5f9; font-family: 'Inter', sans-serif; overflow: hidden; }
+        .side-panel { background: #0f172a; border-right: 1px solid #1e293b; }
+        .stat-card { background: #1e293b; border: 1px solid #334155; border-radius: 12px; }
+        .input-dark { background: #020617; border: 1px solid #334155; color: #fff; padding: 10px; border-radius: 8px; width: 100%; outline: none; }
+        .input-dark:focus { border-color: #22d3ee; }
+        .btn-run { background: linear-gradient(to right, #06b6d4, #3b82f6); color: white; font-weight: 900; transition: 0.3s; }
+        .btn-run:hover { transform: scale(1.02); box-shadow: 0 0 20px rgba(6, 182, 212, 0.4); }
+        ::-webkit-scrollbar { width: 5px; }
+        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 10px; }
+    </style>
 </head>
-<body class="bg-slate-900 text-white flex items-center justify-center h-screen">
-    <div class="bg-slate-800 p-8 rounded-2xl shadow-2xl w-96 border border-slate-700">
-        <h1 class="text-center text-xl font-bold mb-6 text-cyan-400">PAINEL OFICIAL</h1>
-        
-        <div id="status-box" class="p-4 bg-slate-900 rounded-lg mb-4 border border-slate-700">
-            <p class="text-[10px] text-slate-500 uppercase font-bold text-center">Status da Conexão</p>
-            <p id="api-status" class="text-yellow-500 font-bold text-center mt-1 text-sm">Aguardando Token...</p>
+<body class="h-screen flex flex-col">
+
+    <header class="h-16 bg-[#0f172a] border-b border-slate-800 flex items-center justify-between px-8">
+        <div class="flex items-center gap-3">
+            <div class="w-10 h-10 bg-cyan-500 rounded-lg flex items-center justify-center shadow-lg shadow-cyan-500/20">
+                <i class="fas fa-microchip text-slate-900 text-xl"></i>
+            </div>
+            <h1 class="text-xl font-black italic tracking-tighter">EXPERT <span class="text-cyan-400">VISION</span></h1>
         </div>
-
-        <input id="token-input" type="password" placeholder="Cole seu Token (Read+Trade)" 
-               class="w-full p-3 bg-slate-950 border border-slate-700 rounded mb-4 text-cyan-400 outline-none focus:border-cyan-500 text-center">
-        
-        <button onclick="conectar()" class="w-full py-4 bg-cyan-600 hover:bg-cyan-500 rounded-xl font-bold transition uppercase tracking-tighter">
-            Conectar na Deriv
-        </button>
-
-        <div id="result" class="mt-4 hidden p-4 bg-green-900/30 border border-green-500 text-green-400 rounded-xl text-center">
-            <p class="text-[10px] uppercase font-black">Autenticado com Sucesso</p>
-            <p id="balance-val" class="text-2xl font-mono font-bold mt-1">$ 0.00</p>
+        <div class="flex items-center gap-8">
+            <div class="text-right">
+                <span id="acc-status" class="text-[10px] font-bold text-red-500 uppercase tracking-widest">• Desconectado</span>
+                <p id="balance-display" class="text-xl font-mono font-bold">$ 0.00</p>
+            </div>
         </div>
-    </div>
+    </header>
 
+    <main class="flex-1 flex overflow-hidden">
+        <aside class="w-80 side-panel p-6 overflow-y-auto space-y-6">
+            <div class="space-y-4">
+                <h3 class="text-xs font-bold text-slate-500 uppercase">Autenticação</h3>
+                <input id="api-token" type="password" placeholder="Cole seu Token (Read+Trade)" class="input-dark text-sm">
+                
+                <h3 class="text-xs font-bold text-slate-500 uppercase pt-2">Estratégia DIF GALE</h3>
+                
+                <div>
+                    <label class="text-[10px] text-slate-400 uppercase">Mercado</label>
+                    <select id="market" class="input-dark mt-1 text-sm">
+                        <option value="R_10">Volatility 10 Index</option>
+                        <option value="R_50">Volatility 50 Index</option>
+                        <option value="R_100" selected>Volatility 100 Index</option>
+                        <option value="1HZ10V">Volatility 10 (1s)</option>
+                        <option value="1HZ100V">Volatility 100 (1s)</option>
+                    </select>
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="text-[10px] text-slate-400 uppercase">Entrada ($)</label>
+                        <input id="stake" type="number" value="0.35" class="input-dark">
+                    </div>
+                    <div>
+                        <label class="text-[10px] text-slate-400 uppercase">Dígito Alvo</label>
+                        <input id="prediction" type="number" value="9" max="9" min="0" class="input-dark">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="text-[10px] text-slate-400 uppercase">Loss Virtual (Livre)</label>
+                    <input id="v-loss-limit" type="number" value="3" class="input-dark border-cyan-500/30">
+                    <p class="text-[9px] text-slate-500 mt-1 italic">Quantas vezes o dígito deve aparecer antes de entrar.</p>
+                </div>
+
+                <div class="pt-4">
+                    <button id="btn-action" onclick="toggleBot()" class="w-full py-4 rounded-xl btn-run uppercase text-sm">
+                        <i class="fas fa-play mr-2"></i> Iniciar Robô
+                    </button>
+                </div>
+            </div>
+        </aside>
+
+        <section class="flex-1 p-6 flex flex-col gap-6 overflow-hidden">
+            <div class="flex-[2] stat-card overflow-hidden relative">
+                <div id="tradingview_chart" class="h-full w-full"></div>
+            </div>
+
+            <div class="flex-1 flex gap-6">
+                <div class="w-64 flex flex-col gap-3">
+                    <div class="stat-card p-4 flex justify-between items-center">
+                        <span class="text-xs text-slate-400 uppercase">Wins</span>
+                        <span id="wins" class="text-xl font-bold text-green-400">0</span>
+                    </div>
+                    <div class="stat-card p-4 flex justify-between items-center">
+                        <span class="text-xs text-slate-400 uppercase">Losses</span>
+                        <span id="losses" class="text-xl font-bold text-red-400">0</span>
+                    </div>
+                    <div class="stat-card p-4 flex flex-col items-center justify-center bg-cyan-950/20">
+                        <span class="text-[10px] text-cyan-400 uppercase font-bold">Contador V-Loss</span>
+                        <span id="v-counter" class="text-3xl font-black text-white">0</span>
+                    </div>
+                </div>
+
+                <div class="flex-1 stat-card p-4 flex flex-col">
+                    <h4 class="text-[10px] font-bold text-slate-500 uppercase mb-2 border-b border-slate-700 pb-1">Relatório de Execução</h4>
+                    <div id="logs" class="flex-1 overflow-y-auto text-[11px] font-mono space-y-1">
+                        <div class="text-slate-600 italic">Sistema pronto. Aguardando Token...</div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <script type="text/javascript" src="https://s3.tradingview.com/tv.js"></script>
     <script>
-        function conectar() {
-            const token = document.getElementById('token-input').value.trim();
-            const status = document.getElementById('api-status');
-            const app_id = '33e1UPy4LXVMuK8F8PU3t';
+        let ws;
+        let running = false;
+        let vCounter = 0;
+        let stakeOriginal = 0;
+        let currentStake = 0;
 
-            if(!token) return alert("Insira o token!");
+        // Inicia Gráfico
+        function loadChart(symbol) {
+            new TradingView.widget({
+                "autosize": true,
+                "symbol": "DERIV:" + symbol,
+                "interval": "1", "theme": "dark", "style": "1", "locale": "br",
+                "container_id": "tradingview_chart"
+            });
+        }
+        loadChart("VOLATILITY_100_INDEX");
 
-            // Agora como site (HTTPS), a Deriv aceita a conexão WebSocket!
-            const ws = new WebSocket(`wss://ws.binaryws.com/websockets/v3?app_id=${app_id}`);
+        function toggleBot() {
+            const token = document.getElementById('api-token').value;
+            if(!token) return alert("Erro: Você precisa colar o seu Token primeiro!");
 
-            ws.onopen = () => ws.send(JSON.stringify({ authorize: token }));
+            if(!running) {
+                ws = new WebSocket('wss://ws.binaryws.com/websockets/v3?app_id=1089');
+                ws.onopen = () => ws.send(JSON.stringify({ authorize: token }));
+                
+                ws.onmessage = (msg) => {
+                    const data = JSON.parse(msg.data);
+                    
+                    if(data.error) {
+                        log("ERRO DE TOKEN: " + data.error.message, "text-red-500");
+                        return;
+                    }
 
-            ws.onmessage = (msg) => {
-                const data = JSON.parse(msg.data);
-                if (data.error) {
-                    status.innerText = "ERRO: " + data.error.message;
-                    status.className = "text-red-500 font-bold text-center";
-                    return;
+                    if(data.msg_type === 'authorize') {
+                        running = true;
+                        document.getElementById('acc-status').innerText = data.authorize.is_virtual ? "• CONTA DEMO" : "• CONTA REAL";
+                        document.getElementById('acc-status').className = data.authorize.is_virtual ? "text-[10px] font-bold text-green-500 uppercase" : "text-[10px] font-bold text-orange-500 uppercase";
+                        document.getElementById('btn-action').innerHTML = '<i class="fas fa-stop mr-2"></i> Parar Operações';
+                        document.getElementById('btn-action').className = "w-full py-4 rounded-xl bg-red-600 text-white uppercase text-sm font-bold";
+                        ws.send(JSON.stringify({ balance: 1, subscribe: 1 }));
+                        ws.send(JSON.stringify({ ticks: document.getElementById('market').value, subscribe: 1 }));
+                        stakeOriginal = parseFloat(document.getElementById('stake').value);
+                        currentStake = stakeOriginal;
+                        log("Bot conectado e analisando ticks...", "text-cyan-400");
+                    }
+
+                    if(data.msg_type === 'balance') {
+                        document.getElementById('balance-display').innerText = `$ ${data.balance.balance.toFixed(2)}`;
+                    }
+
+                    if(data.msg_type === 'tick' && running) {
+                        const digit = data.tick.quote.toString().slice(-1);
+                        const target = document.getElementById('prediction').value;
+                        const limit = document.getElementById('v-loss-limit').value;
+
+                        if(digit == target) {
+                            vCounter++;
+                            document.getElementById('v-counter').innerText = vCounter;
+                            log(`V-Loss: Dígito ${digit} detectado! (${vCounter}/${limit})`, "text-orange-400");
+                        }
+
+                        if(vCounter >= limit) {
+                            executarOrdem();
+                            vCounter = 0;
+                            document.getElementById('v-counter').innerText = "0";
+                        }
+                    }
+
+                    if(data.msg_type === 'proposal_open_contract' && data.proposal_open_contract.is_settled) {
+                        const win = data.proposal_open_contract.status === 'won';
+                        if(win) {
+                            document.getElementById('wins').innerText = parseInt(document.getElementById('wins').innerText) + 1;
+                            currentStake = stakeOriginal;
+                            log("WIN! Resultado positivo. Resetando Gale.", "text-green-400 font-bold");
+                        } else {
+                            document.getElementById('losses').innerText = parseInt(document.getElementById('losses').innerText) + 1;
+                            currentStake = currentStake * 11; // GALE RECUPERAÇÃO
+                            log(`LOSS. Aplicando Gale: $ ${currentStake.toFixed(2)}`, "text-red-400 font-bold");
+                        }
+                    }
+                };
+            } else {
+                location.reload(); // Para o bot resetando a página
+            }
+        }
+
+        function executarOrdem() {
+            log(`Entrada Real: DIFERENTE DE ${document.getElementById('prediction').value}`, "text-white font-bold bg-cyan-900/30 p-1 rounded");
+            ws.send(JSON.stringify({
+                "buy": 1, "price": currentStake,
+                "parameters": {
+                    "amount": currentStake, "basis": "stake", "contract_type": "DIGITDIFF",
+                    "currency": "USD", "duration": 1, "duration_unit": "t",
+                    "symbol": document.getElementById('market').value,
+                    "barrier": document.getElementById('prediction').value
                 }
-                if (data.msg_type === 'authorize') {
-                    status.innerText = "CONECTADO!";
-                    status.className = "text-green-500 font-bold text-center";
-                    document.getElementById('result').classList.remove('hidden');
-                    ws.send(JSON.stringify({ balance: 1, subscribe: 1 }));
-                }
-                if (data.msg_type === 'balance') {
-                    document.getElementById('balance-val').innerText = `$ ${data.balance.balance.toFixed(2)}`;
-                }
-            };
+            }));
+        }
+
+        function log(msg, colorClass) {
+            const l = document.getElementById('logs');
+            const d = document.createElement('div');
+            d.className = `border-b border-slate-800 pb-1 ${colorClass}`;
+            d.innerHTML = `[${new Date().toLocaleTimeString()}] ${msg}`;
+            l.prepend(d);
         }
     </script>
 </body>
