@@ -2,160 +2,197 @@
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
-    <title>Expert Vision | Operacional PKCE</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Expert Vision | Neural Interface</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        body { background: #000; color: #fff; font-family: 'Inter', sans-serif; }
-        .glass { background: rgba(15, 23, 42, 0.9); backdrop-filter: blur(10px); border: 1px solid #1e3a5f; }
-        .btn-glow { background: linear-gradient(135deg, #0891b2 0%, #2563eb 100%); transition: 0.3s; cursor: pointer; font-weight: bold; }
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;900&family=Inter:wght@300;600&display=swap');
+        body { background: #010409; color: #e6edf3; font-family: 'Inter', sans-serif; overflow: hidden; }
+        .cyber-panel { background: rgba(13, 17, 23, 0.8); backdrop-filter: blur(20px); border: 1px solid #30363d; border-top: 4px solid #0891b2; }
+        .btn-glow { background: linear-gradient(135deg, #0891b2 0%, #0369a1 100%); transition: 0.4s; color: white; font-weight: 900; letter-spacing: 1px; }
+        .btn-glow:hover { transform: scale(1.02); box-shadow: 0 0 25px rgba(8, 145, 178, 0.4); }
         .hidden-step { display: none !important; }
+        .font-cyber { font-family: 'Orbitron', sans-serif; }
     </style>
 </head>
-<body class="h-screen flex items-center justify-center p-4">
+<body class="h-screen flex items-center justify-center p-6">
 
-    <div id="auth-card" class="w-full max-w-md glass p-10 rounded-[2.5rem] text-center border-t-4 border-cyan-500">
-        <h1 class="text-2xl font-black italic uppercase mb-2">Expert <span class="text-cyan-400">Vision</span></h1>
-        <p class="text-[10px] text-slate-500 font-bold uppercase tracking-widest mb-8">OAuth2 + PKCE System</p>
-
-        <div id="setup-area" class="space-y-4">
-            <button onclick="iniciarFluxoDeriv()" class="btn-glow w-full py-4 rounded-xl uppercase text-xs text-white">
-                Autorizar com Deriv
-            </button>
-            <div id="status-msg" class="text-[10px] text-slate-400 font-mono italic">Aguardando início...</div>
+    <div id="step-portal" class="w-full max-w-md cyber-panel p-10 rounded-[2.5rem] text-center shadow-2xl">
+        <div class="mb-10">
+            <h1 class="text-3xl font-cyber italic uppercase">Expert <span class="text-cyan-400">Vision</span></h1>
+            <div class="h-1 w-20 bg-cyan-500 mx-auto mt-2"></div>
+        </div>
+        <div class="space-y-4">
+            <input id="user-name" type="text" placeholder="ID DO OPERADOR" class="w-full p-4 bg-black border border-slate-800 rounded-xl text-center text-cyan-400 font-mono focus:border-cyan-500 outline-none">
+            <button onclick="loginPortal()" class="btn-glow w-full py-5 rounded-2xl uppercase text-xs">Acessar Terminal</button>
         </div>
     </div>
 
-    <div id="robot-ui" class="hidden-step w-full max-w-lg glass p-8 rounded-3xl text-center">
-        <div class="flex items-center justify-between mb-6">
-            <div class="flex items-center gap-2">
-                <div class="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
-                <span class="text-xs font-bold text-green-400">SISTEMA ATIVO</span>
+    <div id="step-connect" class="hidden-step w-full max-w-md cyber-panel p-10 rounded-[2.5rem] text-center">
+        <div class="mb-8 flex flex-col items-center">
+            <div class="w-16 h-16 bg-cyan-500/10 rounded-full flex items-center justify-center mb-4 border border-cyan-500/30">
+                <i class="fas fa-network-wired text-cyan-400 text-2xl"></i>
             </div>
-            <h2 id="balance-display" class="text-2xl font-mono font-black">$ 0.00</h2>
+            <h2 class="text-xl font-bold font-cyber">Conexão Deriv</h2>
+            <p class="text-[10px] text-slate-500 uppercase mt-2">Sincronização Necessária</p>
         </div>
-        <button class="btn-glow w-full py-4 rounded-xl uppercase">Iniciar Operações</button>
+        <button onclick="iniciarFluxoOAuth()" class="btn-glow w-full py-5 rounded-2xl uppercase text-xs flex items-center justify-center gap-3">
+            <i class="fas fa-shield-halved"></i> Autorizar via PKCE
+        </button>
+        <p id="status-log" class="text-[9px] text-slate-600 mt-6 font-mono uppercase tracking-widest">Aguardando Validação...</p>
+    </div>
+
+    <div id="step-robot" class="hidden-step w-full max-w-6xl grid grid-cols-12 gap-6 h-[85vh]">
+        <aside class="col-span-12 lg:col-span-4 flex flex-col gap-4">
+            <div class="cyber-panel p-8 rounded-[2rem] flex-1 flex flex-col gap-6">
+                <div class="flex items-center gap-4 border-b border-slate-800 pb-4">
+                    <div id="led" class="w-3 h-3 rounded-full bg-red-600 shadow-[0_0_10px_red]"></div>
+                    <span id="account-type" class="text-[10px] font-black text-slate-400 uppercase font-cyber">Desconectado</span>
+                </div>
+                
+                <div class="space-y-2">
+                    <p class="text-[9px] text-slate-500 font-bold uppercase">Saldo em Tempo Real</p>
+                    <h3 id="balance-val" class="text-4xl font-cyber font-black text-white">$ 0.00</h3>
+                </div>
+
+                <button id="btn-start" disabled class="btn-glow w-full py-6 rounded-2xl uppercase text-sm mt-auto opacity-30 cursor-not-allowed">
+                    <i class="fas fa-play mr-2"></i> Iniciar Operação
+                </button>
+            </div>
+        </aside>
+
+        <main class="col-span-12 lg:col-span-8 cyber-panel p-8 rounded-[2.5rem] flex flex-col">
+            <div class="flex-1 overflow-y-auto font-mono text-[11px] space-y-2" id="console">
+                <div class="text-cyan-500/50">> Kernel Expert Vision Inicializado...</div>
+            </div>
+        </main>
     </div>
 
     <script>
-        // CONFIGURAÇÕES
+        // --- ESTUDO TÉCNICO DOS LINKS (CONFIGURAÇÕES) ---
         const CLIENT_ID = '33e1UPy4LXVMuK8F8PU3t';
         const REDIRECT_URI = 'https://brunotrader316.github.io/Meu-robo';
         const AUTH_URL = 'https://auth.deriv.com/oauth2/auth';
         const TOKEN_URL = 'https://auth.deriv.com/oauth2/token';
 
-        // ETAPA 1: GERAR PARÂMETROS PKCE (Scripts que você enviou)
-        async function gerarParametrosPKCE() {
-            // 1. Generate code_verifier
-            const array = crypto.getRandomValues(new Uint8Array(64));
-            const codeVerifier = Array.from(array)
-                .map(v => 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~'[v % 66])
-                .join('');
-
-            // 2. Derive code_challenge
-            const hash = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(codeVerifier));
-            const codeChallenge = btoa(String.fromCharCode(...new Uint8Array(hash)))
-                .replace(/\+/g, '-')
-                .replace(/\//g, '_')
-                .replace(/=+$/, '');
-
-            // 3. Generate state
-            const state = crypto.getRandomValues(new Uint8Array(16))
-                .reduce((s, b) => s + b.toString(16).padStart(2, '0'), '');
-
-            return { codeVerifier, codeChallenge, state };
+        // 1. GERAR PKCE (Baseado em developers.deriv.com/docs/intro/oauth/)
+        async function gerarPKCE() {
+            const verifier = Array.from(crypto.getRandomValues(new Uint8Array(64)))
+                .map(v => 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~'[v % 66]).join('');
+            
+            const hash = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(verifier));
+            const challenge = btoa(String.fromCharCode(...new Uint8Array(hash)))
+                .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+            
+            const state = Math.random().toString(36).substring(2);
+            return { verifier, challenge, state };
         }
 
-        // ETAPA 2: REDIRECIONAR PARA DERIV
-        async function iniciarFluxoDeriv() {
-            updateStatus("Gerando chaves de segurança PKCE...");
-            const pkce = await gerarParametrosPKCE();
+        function loginPortal() {
+            if(!document.getElementById('user-name').value) return;
+            sessionStorage.setItem('portal_auth', 'true');
+            switchStep('step-connect');
+        }
 
-            // 4. Store code_verifier and state (Sua regra de sessionStorage)
-            sessionStorage.setItem('pkce_code_verifier', pkce.codeVerifier);
+        // 2. REDIRECIONAMENTO (Etapa de Autorização)
+        async function iniciarFluxoOAuth() {
+            const pkce = await gerarPKCE();
+            sessionStorage.setItem('pkce_verifier', pkce.verifier);
             sessionStorage.setItem('oauth_state', pkce.state);
 
             const params = new URLSearchParams({
                 response_type: 'code',
                 client_id: CLIENT_ID,
                 redirect_uri: REDIRECT_URI,
-                scope: 'trade account_manage',
+                scope: 'read trade payments account_manage',
                 state: pkce.state,
-                code_challenge: pkce.codeChallenge,
+                code_challenge: pkce.challenge,
                 code_challenge_method: 'S256'
             });
 
             window.location.href = `${AUTH_URL}?${params.toString()}`;
         }
 
-        // ETAPA 3 & 4: LIDAR COM O RETORNO E TROCAR CÓDIGO POR TOKEN
+        // 3. TRATAMENTO DE RETORNO E TROCA DE TOKEN (Implementação Detalhada)
         window.onload = async () => {
             const urlParams = new URLSearchParams(window.location.search);
             const code = urlParams.get('code');
-            const returnedState = urlParams.get('state');
+            const state = urlParams.get('state');
             const storedState = sessionStorage.getItem('oauth_state');
-            const codeVerifier = sessionStorage.getItem('pkce_code_verifier');
+            const verifier = sessionStorage.getItem('pkce_verifier');
 
-            if (code) {
-                // ETAPA 3.1: Verificar Estado (Proteção CSRF)
-                if (returnedState !== storedState) {
-                    updateStatus("ERRO: Estado de segurança inválido!");
-                    return;
-                }
-
-                updateStatus("Código recebido. Trocando por token...");
-                trocarCodigoPorToken(code, codeVerifier);
+            if (code && state === storedState) {
+                switchStep('step-robot');
+                addLog("Código detectado. Solicitando Access Token...");
+                
+                // Realiza a troca do código pelo token de acesso
+                try {
+                    const response = await fetch(TOKEN_URL, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                        body: new URLSearchParams({
+                            grant_type: 'authorization_code',
+                            client_id: CLIENT_ID,
+                            code: code,
+                            code_verifier: verifier,
+                            redirect_uri: REDIRECT_URI
+                        })
+                    });
+                    
+                    const data = await response.json();
+                    if(data.access_token) {
+                        conectarWS(data.access_token);
+                        // Limpeza conforme documentação
+                        sessionStorage.removeItem('pkce_verifier');
+                        sessionStorage.removeItem('oauth_state');
+                    }
+                } catch (e) { addLog("Erro na troca de token.", "text-red-500"); }
+            } else if (sessionStorage.getItem('portal_auth')) {
+                switchStep('step-connect');
             }
         };
 
-        async function trocarCodigoPorToken(code, verifier) {
-            try {
-                const response = await fetch(TOKEN_URL, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                    body: new URLSearchParams({
-                        grant_type: 'authorization_code',
-                        client_id: CLIENT_ID,
-                        code: code,
-                        code_verifier: verifier,
-                        redirect_uri: REDIRECT_URI
-                    })
-                });
-
-                const data = await response.json();
-
-                if (data.access_token) {
-                    updateStatus("Autenticado com sucesso!");
-                    // Limpa dados sensíveis do storage como instruído
-                    sessionStorage.removeItem('pkce_code_verifier');
-                    sessionStorage.removeItem('oauth_state');
-                    
-                    iniciarInterfaceRobo(data.access_token);
-                } else {
-                    updateStatus("Erro ao obter token: " + (data.error || "Desconhecido"));
-                }
-            } catch (err) {
-                updateStatus("Erro de conexão no servidor de tokens.");
-            }
-        }
-
-        function iniciarInterfaceRobo(token) {
-            document.getElementById('auth-card').classList.add('hidden-step');
-            document.getElementById('robot-ui').classList.remove('hidden-step');
-            
-            // Conectar via WebSocket para pegar saldo usando o Bearer Token
+        // 4. CONEXÃO WEBSOCKET (Baseado em developers.deriv.com/docs/options/websocket/)
+        function conectarWS(token) {
             const ws = new WebSocket(`wss://ws.binaryws.com/websockets/v3?app_id=${CLIENT_ID}`);
-            ws.onopen = () => ws.send(JSON.stringify({ authorize: token }));
+            
+            ws.onopen = () => {
+                addLog("WebSocket Aberto. Autenticando...");
+                ws.send(JSON.stringify({ authorize: token }));
+            };
+
             ws.onmessage = (msg) => {
                 const res = JSON.parse(msg.data);
+                
+                // Endpoint: Authorize
                 if (res.msg_type === 'authorize') {
-                    document.getElementById('balance-display').innerText = `$ ${res.authorize.balance}`;
+                    addLog("Sessão Autorizada com Sucesso!", "text-green-400");
+                    document.getElementById('led').className = "w-3 h-3 rounded-full bg-green-500 shadow-[0_0_10px_#22c55e]";
+                    document.getElementById('account-type').innerText = res.authorize.is_virtual ? "CONTA VIRTUAL" : "CONTA REAL";
+                    document.getElementById('btn-start').disabled = false;
+                    document.getElementById('btn-start').classList.remove('opacity-30', 'cursor-not-allowed');
+                    
+                    // Endpoint: Balance (Inscrição para atualizações contínuas)
+                    ws.send(JSON.stringify({ balance: 1, subscribe: 1 }));
+                }
+
+                // Endpoint: Balance Update
+                if (res.msg_type === 'balance') {
+                    document.getElementById('balance-val').innerText = `$ ${res.balance.balance.toLocaleString('en-US', {minimumFractionDigits: 2})}`;
                 }
             };
         }
 
-        function updateStatus(txt) {
-            document.getElementById('status-msg').innerText = txt;
+        function switchStep(id) {
+            document.querySelectorAll('body > div').forEach(div => div.classList.add('hidden-step'));
+            document.getElementById(id).classList.remove('hidden-step');
+        }
+
+        function addLog(txt, color = "text-slate-500") {
+            const con = document.getElementById('console');
+            con.innerHTML += `<div class="${color}">[${new Date().toLocaleTimeString()}] > ${txt}</div>`;
+            con.scrollTop = con.scrollHeight;
         }
     </script>
 </body>
