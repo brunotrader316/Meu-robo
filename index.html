@@ -2,206 +2,95 @@
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
-    <title>Expert Vision Pro | Autenticação Corrigida</title>
+    <title>Expert Vision | Autenticação Automática</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <style>
-        body { background: #020617; color: #f1f5f9; font-family: 'Inter', sans-serif; overflow: hidden; }
-        .side-panel { background: #0f172a; border-right: 1px solid #1e293b; }
-        .stat-card { background: #1e293b; border: 1px solid #334155; border-radius: 12px; }
-        .input-dark { background: #020617; border: 1px solid #334155; color: #fff; padding: 10px; border-radius: 8px; width: 100%; outline: none; }
-        .input-dark:focus { border-color: #22d3ee; }
-        .btn-run { background: linear-gradient(to right, #06b6d4, #3b82f6); color: white; font-weight: 900; transition: 0.3s; }
-        .btn-run:hover { transform: scale(1.02); box-shadow: 0 0 20px rgba(6, 182, 212, 0.4); }
-        ::-webkit-scrollbar { width: 5px; }
-        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 10px; }
-    </style>
 </head>
-<body class="h-screen flex flex-col">
+<body class="bg-slate-900 text-white flex items-center justify-center h-screen font-sans">
 
-    <header class="h-16 bg-[#0f172a] border-b border-slate-800 flex items-center justify-between px-8">
-        <div class="flex items-center gap-3">
-            <div class="w-10 h-10 bg-cyan-500 rounded-lg flex items-center justify-center shadow-lg shadow-cyan-500/20">
-                <i class="fas fa-robot text-slate-900 text-xl"></i>
-            </div>
-            <h1 class="text-xl font-black italic tracking-tighter">EXPERT <span class="text-cyan-400">VISION</span></h1>
+    <div id="auth-card" class="bg-slate-800 p-10 rounded-3xl shadow-2xl w-full max-w-md border border-slate-700 text-center">
+        <h1 class="text-3xl font-black italic mb-2">EXPERT <span class="text-cyan-400">VISION</span></h1>
+        <p class="text-slate-400 text-xs mb-8 uppercase tracking-widest">Conexão Segura Oficial</p>
+
+        <div id="login-section">
+            <button onclick="iniciarLogin()" class="w-full py-4 bg-cyan-600 hover:bg-cyan-500 rounded-xl font-bold uppercase transition shadow-lg">
+                <i class="fas fa-sign-in-alt mr-2"></i> Entrar com Deriv.com
+            </button>
+            <p class="text-[10px] text-slate-500 mt-4 italic">Você será redirecionado para o login seguro da corretora.</p>
         </div>
-        <div class="flex items-center gap-8">
-            <div class="text-right">
-                <span id="acc-status" class="text-[10px] font-bold text-red-500 uppercase tracking-widest">• Desconectado</span>
-                <p id="balance-display" class="text-xl font-mono font-bold">$ 0.00</p>
-            </div>
+
+        <div id="loading-section" class="hidden">
+            <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-cyan-400 mx-auto mb-4"></div>
+            <p class="text-cyan-400 font-bold uppercase text-xs">Sincronizando Conta...</p>
         </div>
-    </header>
+    </div>
 
-    <main class="flex-1 flex overflow-hidden">
-        <aside class="w-80 side-panel p-6 overflow-y-auto space-y-6">
-            <div class="space-y-4">
-                <h3 class="text-xs font-bold text-slate-500 uppercase">Autenticação</h3>
-                <input id="api-token" type="password" placeholder="Cole seu Token (Read+Trade+Payments)" class="input-dark text-sm text-center">
-                
-                <h3 class="text-xs font-bold text-slate-500 uppercase pt-2">Estratégia DIFERENTE</h3>
-                
-                <div>
-                    <label class="text-[10px] text-slate-400 uppercase">Mercado</label>
-                    <select id="market" class="input-dark mt-1 text-sm">
-                        <option value="R_100">Volatility 100 Index</option>
-                        <option value="R_10">Volatility 10 Index</option>
-                        <option value="1HZ10V">Volatility 10 (1s)</option>
-                    </select>
-                </div>
-
-                <div class="grid grid-cols-2 gap-3">
-                    <div>
-                        <label class="text-[10px] text-slate-400 uppercase">Entrada ($)</label>
-                        <input id="stake" type="number" value="0.35" class="input-dark text-center">
-                    </div>
-                    <div>
-                        <label class="text-[10px] text-slate-400 uppercase">Dígito Alvo</label>
-                        <input id="prediction" type="number" value="9" max="9" min="0" class="input-dark text-center">
-                    </div>
-                </div>
-
-                <div>
-                    <label class="text-[10px] text-slate-400 uppercase">Loss Virtual</label>
-                    <input id="v-loss-limit" type="number" value="3" class="input-dark text-center">
-                </div>
-
-                <div class="pt-4">
-                    <button id="btn-action" onclick="toggleBot()" class="w-full py-4 rounded-xl btn-run uppercase text-sm">
-                        <i class="fas fa-play mr-2"></i> Iniciar Operações
-                    </button>
-                </div>
+    <div id="dashboard" class="hidden w-full max-w-4xl p-6 animate-fadeIn">
+        <div class="bg-slate-800 p-6 rounded-2xl border border-slate-700 flex justify-between items-center shadow-2xl">
+            <div>
+                <p id="acc-type" class="text-[10px] font-bold text-green-400 uppercase tracking-widest">Conectado</p>
+                <h2 id="balance-display" class="text-4xl font-black font-mono mt-1">$ 0.00</h2>
             </div>
-        </aside>
-
-        <section class="flex-1 p-6 flex flex-col gap-6 overflow-hidden">
-            <div class="flex-1 stat-card p-4 flex flex-col">
-                <h4 class="text-[10px] font-bold text-slate-500 uppercase mb-2 border-b border-slate-700 pb-1">Relatório de Operações</h4>
-                <div id="logs" class="flex-1 overflow-y-auto text-[11px] font-mono space-y-1">
-                    <div class="text-slate-500 italic">Pronto para conectar via App ID 33e1UPy4LXVMuK8F8PU3t...</div>
-                </div>
-            </div>
-            
-            <div class="h-24 flex gap-4">
-                <div class="flex-1 stat-card flex items-center justify-center gap-4 bg-green-500/10">
-                    <span class="text-xs font-bold text-green-500">WINS:</span>
-                    <span id="wins" class="text-2xl font-black text-white">0</span>
-                </div>
-                <div class="flex-1 stat-card flex items-center justify-center gap-4 bg-red-500/10">
-                    <span class="text-xs font-bold text-red-500">LOSSES:</span>
-                    <span id="losses" class="text-2xl font-black text-white">0</span>
-                </div>
-                <div class="w-40 stat-card flex flex-col items-center justify-center">
-                    <span class="text-[10px] text-slate-500 uppercase">V-Loss</span>
-                    <span id="v-counter" class="text-2xl font-black text-cyan-400">0</span>
-                </div>
-            </div>
-        </section>
-    </main>
+            <button onclick="logout()" class="bg-red-500/10 text-red-500 px-4 py-2 rounded-lg text-xs font-bold hover:bg-red-500 hover:text-white transition">
+                SAIR
+            </button>
+        </div>
+    </div>
 
     <script>
-        let ws;
-        let running = false;
-        let vCounter = 0;
-        let currentStake = 0;
         const APP_ID = '33e1UPy4LXVMuK8F8PU3t';
+        const REDIRECT_URI = window.location.href.split('?')[0];
 
-        function toggleBot() {
-            const token = document.getElementById('api-token').value.trim();
-            if(!token) return alert("Por favor, cole seu Token!");
+        // Passo 1: Envia o usuário para o site da Deriv
+        function iniciarLogin() {
+            const authUrl = `https://oauth.deriv.com/oauth2/authorize?app_id=${APP_ID}&l=pt`;
+            window.location.href = authUrl;
+        }
 
-            if(!running) {
-                // CONEXÃO CORRIGIDA COM O SEU APP ID OFICIAL
-                ws = new WebSocket(`wss://ws.binaryws.com/websockets/v3?app_id=${APP_ID}`);
-                
-                ws.onopen = () => {
-                    log("Solicitando autorização...", "text-yellow-500");
-                    ws.send(JSON.stringify({ authorize: token }));
-                };
+        // Passo 2: Verifica automaticamente se o usuário voltou logado
+        window.onload = () => {
+            const urlParams = new URLSearchParams(window.location.search);
+            const token = urlParams.get('token1'); // A Deriv devolve o token na URL
 
-                ws.onmessage = (msg) => {
-                    const data = JSON.parse(msg.data);
-                    
-                    if(data.error) {
-                        log("ERRO: " + data.error.message, "text-red-500");
-                        alert("Erro de Token: " + data.error.message);
-                        running = false;
-                        return;
-                    }
-
-                    if(data.msg_type === 'authorize') {
-                        running = true;
-                        document.getElementById('acc-status').innerText = data.authorize.is_virtual ? "• CONTA DEMO" : "• CONTA REAL";
-                        document.getElementById('acc-status').className = "text-[10px] font-bold text-green-400 uppercase tracking-widest";
-                        document.getElementById('btn-action').innerHTML = '<i class="fas fa-stop mr-2"></i> Parar Robô';
-                        document.getElementById('btn-action').className = "w-full py-4 rounded-xl bg-red-600 text-white uppercase text-sm font-bold";
-                        
-                        ws.send(JSON.stringify({ balance: 1, subscribe: 1 }));
-                        ws.send(JSON.stringify({ ticks: document.getElementById('market').value, subscribe: 1 }));
-                        currentStake = parseFloat(document.getElementById('stake').value);
-                        log("Conectado com sucesso. Analisando mercado...", "text-green-400");
-                    }
-
-                    if(data.msg_type === 'balance') {
-                        document.getElementById('balance-display').innerText = `$ ${data.balance.balance.toFixed(2)}`;
-                    }
-
-                    if(data.msg_type === 'tick' && running) {
-                        const digit = data.tick.quote.toString().slice(-1);
-                        const target = document.getElementById('prediction').value;
-                        const limit = document.getElementById('v-loss-limit').value;
-
-                        if(digit == target) {
-                            vCounter++;
-                            document.getElementById('v-counter').innerText = vCounter;
-                            log(`V-Loss: Dígito ${digit} apareceu (${vCounter}/${limit})`, "text-cyan-400");
-                            
-                            if(vCounter >= limit) {
-                                executarOrdem();
-                                vCounter = 0;
-                                document.getElementById('v-counter').innerText = "0";
-                            }
-                        }
-                    }
-
-                    if(data.msg_type === 'proposal_open_contract' && data.proposal_open_contract.is_settled) {
-                        const win = data.proposal_open_contract.status === 'won';
-                        if(win) {
-                            document.getElementById('wins').innerText = parseInt(document.getElementById('wins').innerText) + 1;
-                            currentStake = parseFloat(document.getElementById('stake').value);
-                            log("RESULTADO: WIN! (+1)", "text-green-400 font-bold");
-                        } else {
-                            document.getElementById('losses').innerText = parseInt(document.getElementById('losses').innerText) + 1;
-                            currentStake = currentStake * 11; // Multiplicador para Digit Diff
-                            log(`RESULTADO: LOSS. Próxima entrada: $${currentStake.toFixed(2)}`, "text-red-400 font-bold");
-                        }
-                    }
-                };
-            } else {
-                location.reload();
+            if (token) {
+                // Se existe token na URL, autentica imediatamente
+                document.getElementById('login-section').classList.add('hidden');
+                document.getElementById('loading-section').classList.remove('hidden');
+                conectar(token);
             }
-        }
+        };
 
-        function executarOrdem() {
-            log(`ENTRANDO: Diferente de ${document.getElementById('prediction').value}`, "text-white font-bold bg-blue-900/40 p-1");
-            ws.send(JSON.stringify({
-                "buy": 1, "price": currentStake,
-                "parameters": {
-                    "amount": currentStake, "basis": "stake", "contract_type": "DIGITDIFF",
-                    "currency": "USD", "duration": 1, "duration_unit": "t",
-                    "symbol": document.getElementById('market').value,
-                    "barrier": document.getElementById('prediction').value
+        function conectar(token) {
+            const ws = new WebSocket(`wss://ws.binaryws.com/websockets/v3?app_id=${APP_ID}`);
+
+            ws.onopen = () => ws.send(JSON.stringify({ authorize: token }));
+
+            ws.onmessage = (msg) => {
+                const data = JSON.parse(msg.data);
+
+                if (data.error) {
+                    alert("Erro na Autenticação: " + data.error.message);
+                    window.location.href = REDIRECT_URI;
+                    return;
                 }
-            }));
+
+                if (data.msg_type === 'authorize') {
+                    document.getElementById('auth-card').classList.add('hidden');
+                    document.getElementById('dashboard').classList.remove('hidden');
+                    document.getElementById('acc-type').innerText = data.authorize.is_virtual ? "Conta Demo" : "Conta Real";
+                    
+                    // Solicita o saldo para confirmar a conexão
+                    ws.send(JSON.stringify({ balance: 1, subscribe: 1 }));
+                }
+
+                if (data.msg_type === 'balance') {
+                    document.getElementById('balance-display').innerText = `$ ${data.balance.balance.toFixed(2)}`;
+                }
+            };
         }
 
-        function log(msg, color) {
-            const l = document.getElementById('logs');
-            const d = document.createElement('div');
-            d.className = `border-b border-slate-800 pb-1 ${color}`;
-            d.innerHTML = `[${new Date().toLocaleTimeString()}] ${msg}`;
-            l.prepend(d);
+        function logout() {
+            window.location.href = REDIRECT_URI;
         }
     </script>
 </body>
