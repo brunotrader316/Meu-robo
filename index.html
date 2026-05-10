@@ -2,103 +2,85 @@
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
-    <title>Expert Vision | Secure Access</title>
+    <title>Expert Vision | Neural Terminal</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         body { background: #020617; color: #f1f5f9; font-family: 'Inter', sans-serif; overflow: hidden; }
-        .glass { background: rgba(15, 23, 42, 0.9); backdrop-filter: blur(10px); border: 1px solid rgba(34, 211, 238, 0.1); }
+        .glass { background: rgba(15, 23, 42, 0.9); backdrop-filter: blur(12px); border: 1px solid rgba(34, 211, 238, 0.1); }
         .input-cyber { background: #010409; border: 1px solid #1e3a5f; color: #22d3ee; outline: none; transition: 0.3s; }
         .input-cyber:focus { border-color: #06b6d4; box-shadow: 0 0 15px rgba(6, 182, 212, 0.2); }
         .btn-glow { background: linear-gradient(135deg, #0891b2 0%, #2563eb 100%); transition: 0.3s; font-weight: 900; }
         .btn-glow:hover { transform: translateY(-2px); box-shadow: 0 5px 20px rgba(8, 145, 178, 0.4); }
-        .hidden-step { display: none; }
+        .hidden-step { display: none !important; }
     </style>
 </head>
 <body class="h-screen flex items-center justify-center p-4 bg-black">
 
-    <div id="site-login" class="w-full max-w-md glass p-10 rounded-[2.5rem] text-center border-t-4 border-cyan-500 shadow-2xl">
+    <div id="site-login" class="w-full max-w-md glass p-10 rounded-[2.5rem] text-center border-t-4 border-cyan-500">
         <div class="mb-8">
             <div class="w-16 h-16 bg-cyan-500/20 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-cyan-500/30">
-                <i class="fas fa-user-shield text-cyan-400 text-3xl"></i>
+                <i class="fas fa-user-check text-cyan-400 text-3xl"></i>
             </div>
             <h1 class="text-2xl font-black italic uppercase tracking-tighter">Expert <span class="text-cyan-400">Vision</span></h1>
-            <p class="text-[10px] text-slate-500 font-bold uppercase tracking-widest mt-2">Área do Cliente</p>
+            <p class="text-[10px] text-slate-500 font-bold uppercase mt-2">Área de Login</p>
         </div>
-        
         <div class="space-y-4">
-            <input id="user-email" type="email" placeholder="Seu e-mail de acesso" class="input-cyber w-full p-4 rounded-xl text-sm">
-            <button onclick="acessarPlataforma()" class="btn-glow w-full py-4 rounded-xl uppercase text-xs tracking-widest">
-                Entrar no Painel
-            </button>
+            <input id="user-access" type="text" placeholder="Nome de Utilizador" class="input-cyber w-full p-4 rounded-xl text-sm">
+            <button onclick="entrarNoSistema()" class="btn-glow w-full py-4 rounded-xl uppercase text-xs tracking-widest">Entrar</button>
         </div>
-        <p class="mt-6 text-[10px] text-slate-600 font-bold uppercase">Acesso restrito a usuários autorizados</p>
     </div>
 
-    <div id="main-panel" class="hidden-step w-full max-w-6xl grid grid-cols-12 gap-6 h-[90vh]">
+    <div id="dashboard" class="hidden-step w-full max-w-6xl grid grid-cols-12 gap-6 h-[90vh]">
         
         <aside class="col-span-12 lg:col-span-4 flex flex-col gap-4">
             <div class="glass p-8 rounded-[2rem] flex-1 flex flex-col gap-6">
-                <div class="flex items-center gap-4">
-                    <div class="w-12 h-12 bg-cyan-500/20 rounded-xl flex items-center justify-center border border-cyan-500/30">
-                        <i class="fas fa-key text-cyan-400 text-xl"></i>
-                    </div>
-                    <div>
-                        <h3 class="text-sm font-black uppercase text-white">Segunda Etapa</h3>
-                        <p class="text-[9px] text-slate-500 uppercase font-bold">Conectar à Deriv</p>
-                    </div>
-                </div>
-
                 <div class="space-y-4">
-                    <button onclick="loginDeriv()" class="w-full py-4 bg-white text-black rounded-xl font-black text-[10px] uppercase flex items-center justify-center gap-3 hover:bg-slate-200 transition">
-                        <img src="https://deriv.com/static/00742f9b1c7f99990b790d97034b1593/deriv-logo-c2.svg" class="w-16">
-                        Autorizar Acesso
-                    </button>
+                    <h2 class="text-xs font-black uppercase text-slate-400">Autenticação Deriv</h2>
                     
-                    <div class="flex items-center gap-3 py-2">
-                        <div class="h-[1px] bg-slate-800 flex-1"></div>
-                        <span class="text-[9px] text-slate-600 font-bold uppercase">Ou Manual</span>
-                        <div class="h-[1px] bg-slate-800 flex-1"></div>
-                    </div>
+                    <button onclick="autorizarDeriv()" class="w-full py-4 bg-white text-black rounded-xl font-black text-[10px] uppercase flex items-center justify-center gap-3">
+                        <img src="https://deriv.com/static/00742f9b1c7f99990b790d97034b1593/deriv-logo-c2.svg" class="w-16">
+                        Confirmar no Site
+                    </button>
 
                     <div class="relative">
-                        <input id="api-token" type="password" placeholder="Cole seu Token aqui" class="input-cyber w-full p-4 rounded-xl text-xs">
-                        <button onclick="conectar(document.getElementById('api-token').value)" class="absolute right-3 top-3 text-cyan-500">
-                            <i class="fas fa-paper-plane"></i>
+                        <input id="api-token" type="password" value="33eu4HBakeGnrJSiITpaR" class="input-cyber w-full p-4 rounded-xl text-xs pr-12">
+                        <button onclick="conectar(document.getElementById('api-token').value)" class="absolute right-3 top-3.5 text-cyan-500">
+                            <i id="sync-icon" class="fas fa-sync-alt"></i>
                         </button>
                     </div>
 
-                    <div id="status-badge" class="p-3 bg-slate-950/80 rounded-xl border border-slate-800 flex items-center gap-3">
+                    <div class="p-3 bg-slate-950/80 rounded-xl border border-slate-800 flex items-center gap-3">
                         <div id="led" class="w-2 h-2 rounded-full bg-red-500 shadow-[0_0_8px_red]"></div>
-                        <span id="status-txt" class="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Desconectado da Corretora</span>
+                        <span id="status-text" class="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Desconectado</span>
                     </div>
                 </div>
 
-                <button id="btn-start" disabled class="btn-glow w-full py-5 rounded-2xl uppercase text-sm mt-auto opacity-20 cursor-not-allowed">
-                    <i class="fas fa-play mr-2"></i> Iniciar Algoritmo
+                <button id="btn-play" disabled class="btn-glow w-full py-5 rounded-2xl uppercase text-sm mt-auto opacity-20 cursor-not-allowed">
+                    Iniciar Algoritmo
                 </button>
             </div>
         </aside>
 
         <main class="col-span-12 lg:col-span-8 flex flex-col gap-4">
             <div class="grid grid-cols-3 gap-4">
-                <div class="glass p-6 rounded-[2rem] text-center border-b-4 border-green-500/20">
-                    <p class="text-[9px] text-slate-500 font-bold uppercase">Lucro (Wins)</p>
-                    <h4 id="wins" class="text-3xl font-black text-green-400">0</h4>
+                <div class="glass p-6 rounded-[2rem] text-center border-b-2 border-green-500/30">
+                    <p class="text-[9px] text-slate-500 font-bold uppercase">Wins</p>
+                    <h4 id="win-count" class="text-3xl font-black">0</h4>
                 </div>
-                <div class="glass p-6 rounded-[2rem] text-center border-b-4 border-red-500/20">
-                    <p class="text-[9px] text-slate-500 font-bold uppercase">Prejuízo (Loss)</p>
-                    <h4 id="losses" class="text-3xl font-black text-red-400">0</h4>
+                <div class="glass p-6 rounded-[2rem] text-center border-b-2 border-red-500/30">
+                    <p class="text-[9px] text-slate-500 font-bold uppercase">Losses</p>
+                    <h4 id="loss-count" class="text-3xl font-black">0</h4>
                 </div>
-                <div class="glass p-6 rounded-[2rem] text-center border-b-4 border-cyan-500/20">
-                    <p class="text-[9px] text-slate-500 font-bold uppercase">Banca Atual</p>
-                    <h4 id="balance" class="text-3xl font-black text-white font-mono">$ 0.00</h4>
+                <div class="glass p-6 rounded-[2rem] text-center border-b-2 border-cyan-500/30">
+                    <p class="text-[9px] text-slate-500 font-bold uppercase">Saldo</p>
+                    <h4 id="balance-display" class="text-3xl font-black text-cyan-400 font-mono">$ 0.00</h4>
                 </div>
             </div>
 
             <div class="glass p-8 rounded-[2.5rem] flex-1 flex flex-col overflow-hidden">
-                <div id="logs" class="flex-1 overflow-y-auto font-mono text-[11px] space-y-2 pr-4 text-slate-400">
-                    <div class="text-cyan-500/50 italic">> Autenticação de site concluída. Aguardando pulso da Deriv...</div>
+                <div id="console-logs" class="flex-1 overflow-y-auto font-mono text-[11px] space-y-2 text-slate-400">
+                    <div class="text-slate-600 italic">> Consola pronta. Aguardando sinal...</div>
                 </div>
             </div>
         </main>
@@ -108,67 +90,66 @@
         const APP_ID = '33e1UPy4LXVMuK8F8PU3t';
         let ws;
 
-        // ETAPA 1: Login no Site
-        function acessarPlataforma() {
-            const email = document.getElementById('user-email').value;
-            if(email.length < 5) return alert("Insira um e-mail válido!");
-            
+        function entrarNoSistema() {
+            const user = document.getElementById('user-access').value;
+            if(!user) return alert("Por favor, identifique-se.");
             document.getElementById('site-login').classList.add('hidden-step');
-            document.getElementById('main-panel').classList.remove('hidden-step');
-            addLog("Acesso ao site autorizado para: " + email, "text-green-400");
+            document.getElementById('dashboard').classList.remove('hidden-step');
+            addLog("Bem-vindo, " + user + ". Conecte o robô para começar.", "text-green-400");
         }
 
-        // ETAPA 2: Redirecionamento Deriv
-        function loginDeriv() {
+        // Função que usa o APP_ID e a URL que você configurou na imagem
+        function autorizarDeriv() {
             window.location.href = `https://oauth.deriv.com/oauth2/authorize?app_id=${APP_ID}&l=PT&brand=deriv`;
         }
 
-        // VERIFICA RETORNO DA DERIV
         window.onload = () => {
-            const params = new URLSearchParams(window.location.search);
-            const token = params.get('token1');
-            if (token) {
-                // Se voltou com token, pula o login do site e abre o painel
+            const urlParams = new URLSearchParams(window.location.search);
+            const tokenUrl = urlParams.get('token1');
+            if (tokenUrl) {
                 document.getElementById('site-login').classList.add('hidden-step');
-                document.getElementById('main-panel').classList.remove('hidden-step');
-                conectar(token);
+                document.getElementById('dashboard').classList.remove('hidden-step');
+                conectar(tokenUrl);
             }
         };
 
         function conectar(token) {
             if(!token) return;
-            addLog("Validando credenciais na Deriv...", "text-yellow-500");
-            
+            document.getElementById('sync-icon').classList.add('animate-spin');
+            addLog("A validar token na Deriv...", "text-yellow-500");
+
             ws = new WebSocket(`wss://ws.binaryws.com/websockets/v3?app_id=${APP_ID}`);
             ws.onopen = () => ws.send(JSON.stringify({ authorize: token }));
 
             ws.onmessage = (msg) => {
                 const data = JSON.parse(msg.data);
                 if (data.error) {
-                    addLog("ERRO DERIV: " + data.error.message, "text-red-500");
+                    addLog("ERRO: " + data.error.message, "text-red-500");
+                    document.getElementById('sync-icon').classList.remove('animate-spin');
                     return;
                 }
                 if (data.msg_type === 'authorize') {
-                    addLog("CONEXÃO TOTAL ESTABELECIDA!", "text-green-400 font-bold");
+                    addLog("SISTEMA SINCRONIZADO!", "text-green-400 font-bold");
                     document.getElementById('led').className = "w-2 h-2 rounded-full bg-green-500 shadow-[0_0_8px_#22c55e]";
-                    document.getElementById('status-txt').innerText = data.authorize.is_virtual ? "CONTA DEMO ATIVA" : "CONTA REAL ATIVA";
-                    document.getElementById('status-txt').className = "text-[9px] font-bold text-green-400 uppercase";
-                    document.getElementById('btn-start').disabled = false;
-                    document.getElementById('btn-start').className = "btn-glow w-full py-5 rounded-2xl uppercase text-sm mt-auto";
+                    document.getElementById('status-text').innerText = data.authorize.is_virtual ? "CONTA DEMO" : "CONTA REAL";
+                    document.getElementById('status-text').className = "text-[9px] font-bold text-green-400 uppercase";
+                    document.getElementById('btn-play').disabled = false;
+                    document.getElementById('btn-play').className = "btn-glow w-full py-5 rounded-2xl uppercase text-sm mt-auto";
+                    document.getElementById('sync-icon').classList.remove('animate-spin');
                     ws.send(JSON.stringify({ balance: 1, subscribe: 1 }));
                 }
                 if (data.msg_type === 'balance') {
-                    document.getElementById('balance').innerText = `$ ${data.balance.balance.toFixed(2)}`;
+                    document.getElementById('balance-display').innerText = `$ ${data.balance.balance.toFixed(2)}`;
                 }
             };
         }
 
         function addLog(msg, color) {
-            const logs = document.getElementById('logs');
-            const div = document.createElement('div');
-            div.className = color + " border-l border-slate-800 pl-3";
-            div.innerHTML = `[${new Date().toLocaleTimeString()}] ${msg}`;
-            logs.prepend(div);
+            const logs = document.getElementById('console-logs');
+            const d = document.createElement('div');
+            d.className = color + " border-l border-slate-800 pl-3";
+            d.innerHTML = `[${new Date().toLocaleTimeString()}] ${msg}`;
+            logs.prepend(d);
         }
     </script>
 </body>
