@@ -2,84 +2,99 @@
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
-    <title>Expert Vision | Autenticação Automática</title>
+    <title>Expert Vision | Verificação Instantânea</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body { background: #020617; color: #f1f5f9; font-family: 'Inter', sans-serif; }
+        .glass { background: rgba(15, 23, 42, 0.9); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.1); }
+        .input-api { background: #011627; border: 1px solid #1e3a5f; color: #22d3ee; padding: 15px; border-radius: 12px; width: 100%; text-align: center; font-family: monospace; outline: none; }
+        .success-glow { box-shadow: 0 0 20px rgba(34, 211, 238, 0.2); border-color: #22d3ee; }
+    </style>
 </head>
-<body class="bg-slate-900 text-white flex items-center justify-center h-screen font-sans">
+<body class="h-screen flex items-center justify-center p-4">
 
-    <div id="auth-card" class="bg-slate-800 p-10 rounded-3xl shadow-2xl w-full max-w-md border border-slate-700 text-center">
-        <h1 class="text-3xl font-black italic mb-2">EXPERT <span class="text-cyan-400">VISION</span></h1>
-        <p class="text-slate-400 text-xs mb-8 uppercase tracking-widest">Conexão Segura Oficial</p>
-
-        <div id="login-section">
-            <button onclick="iniciarLogin()" class="w-full py-4 bg-cyan-600 hover:bg-cyan-500 rounded-xl font-bold uppercase transition shadow-lg">
-                <i class="fas fa-sign-in-alt mr-2"></i> Entrar com Deriv.com
-            </button>
-            <p class="text-[10px] text-slate-500 mt-4 italic">Você será redirecionado para o login seguro da corretora.</p>
+    <div id="main-card" class="glass p-8 rounded-3xl w-full max-w-md shadow-2xl transition-all duration-500">
+        <div class="text-center mb-8">
+            <h1 class="text-2xl font-black uppercase italic">Expert <span class="text-cyan-400">Vision</span></h1>
+            <p id="status-text" class="text-[10px] text-slate-500 mt-2 font-bold uppercase tracking-widest">Aguardando Autenticação</p>
         </div>
 
-        <div id="loading-section" class="hidden">
-            <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-cyan-400 mx-auto mb-4"></div>
-            <p class="text-cyan-400 font-bold uppercase text-xs">Sincronizando Conta...</p>
-        </div>
-    </div>
-
-    <div id="dashboard" class="hidden w-full max-w-4xl p-6 animate-fadeIn">
-        <div class="bg-slate-800 p-6 rounded-2xl border border-slate-700 flex justify-between items-center shadow-2xl">
+        <div id="auth-area" class="space-y-6">
             <div>
-                <p id="acc-type" class="text-[10px] font-bold text-green-400 uppercase tracking-widest">Conectado</p>
-                <h2 id="balance-display" class="text-4xl font-black font-mono mt-1">$ 0.00</h2>
+                <label class="text-[10px] text-slate-400 uppercase ml-1">Cole seu Token abaixo:</label>
+                <input id="api-token" type="password" oninput="verificarAutomatico()" placeholder="•••••••••••••••" class="input-api mt-2">
             </div>
-            <button onclick="logout()" class="bg-red-500/10 text-red-500 px-4 py-2 rounded-lg text-xs font-bold hover:bg-red-500 hover:text-white transition">
-                SAIR
-            </button>
+
+            <div id="loader" class="hidden flex flex-col items-center">
+                <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-cyan-400 mb-2"></div>
+                <p class="text-[10px] text-cyan-400 font-bold uppercase">Validando com a Deriv...</p>
+            </div>
+        </div>
+
+        <div id="result-area" class="hidden space-y-6 animate-fadeIn">
+            <div class="p-4 bg-cyan-500/10 border border-cyan-500/30 rounded-2xl text-center">
+                <p id="acc-type" class="text-[10px] font-bold text-cyan-400 uppercase mb-1">---</p>
+                <h2 id="balance-display" class="text-4xl font-black text-white font-mono">$ 0.00</h2>
+            </div>
+            
+            <div class="flex gap-2">
+                <button class="flex-1 py-4 bg-cyan-600 rounded-xl font-bold uppercase text-xs hover:bg-cyan-500 transition">
+                    Iniciar Robô
+                </button>
+                <button onclick="location.reload()" class="px-4 py-4 bg-slate-800 rounded-xl text-slate-400 hover:text-white transition">
+                    <i class="fas fa-sync-alt"></i>
+                </button>
+            </div>
         </div>
     </div>
 
     <script>
         const APP_ID = '33e1UPy4LXVMuK8F8PU3t';
-        const REDIRECT_URI = window.location.href.split('?')[0];
+        let ws;
 
-        // Passo 1: Envia o usuário para o site da Deriv
-        function iniciarLogin() {
-            const authUrl = `https://oauth.deriv.com/oauth2/authorize?app_id=${APP_ID}&l=pt`;
-            window.location.href = authUrl;
-        }
-
-        // Passo 2: Verifica automaticamente se o usuário voltou logado
-        window.onload = () => {
-            const urlParams = new URLSearchParams(window.location.search);
-            const token = urlParams.get('token1'); // A Deriv devolve o token na URL
-
-            if (token) {
-                // Se existe token na URL, autentica imediatamente
-                document.getElementById('login-section').classList.add('hidden');
-                document.getElementById('loading-section').classList.remove('hidden');
+        function verificarAutomatico() {
+            const token = document.getElementById('api-token').value.trim();
+            
+            // Inicia a verificação assim que o token tiver o tamanho mínimo comum (15 caracteres)
+            if (token.length >= 15) {
+                document.getElementById('loader').classList.remove('hidden');
                 conectar(token);
             }
-        };
+        }
 
         function conectar(token) {
-            const ws = new WebSocket(`wss://ws.binaryws.com/websockets/v3?app_id=${APP_ID}`);
+            if (ws) ws.close();
+            
+            ws = new WebSocket(`wss://ws.binaryws.com/websockets/v3?app_id=${APP_ID}`);
 
-            ws.onopen = () => ws.send(JSON.stringify({ authorize: token }));
+            ws.onopen = () => {
+                ws.send(JSON.stringify({ authorize: token }));
+            };
 
             ws.onmessage = (msg) => {
                 const data = JSON.parse(msg.data);
 
                 if (data.error) {
-                    alert("Erro na Autenticação: " + data.error.message);
-                    window.location.href = REDIRECT_URI;
+                    // Se der erro, avisa o usuário e reseta o campo
+                    document.getElementById('loader').classList.add('hidden');
+                    document.getElementById('status-text').innerText = "Erro: Token Inválido";
+                    document.getElementById('status-text').classList.add('text-red-500');
                     return;
                 }
 
                 if (data.msg_type === 'authorize') {
-                    document.getElementById('auth-card').classList.add('hidden');
-                    document.getElementById('dashboard').classList.remove('hidden');
-                    document.getElementById('acc-type').innerText = data.authorize.is_virtual ? "Conta Demo" : "Conta Real";
+                    // Autenticação bem sucedida: Muda a interface instantaneamente
+                    document.getElementById('auth-area').classList.add('hidden');
+                    document.getElementById('result-area').classList.remove('hidden');
+                    document.getElementById('main-card').classList.add('success-glow');
+                    document.getElementById('status-text').innerText = "CONECTADO COM SUCESSO";
+                    document.getElementById('status-text').classList.replace('text-slate-500', 'text-cyan-400');
                     
-                    // Solicita o saldo para confirmar a conexão
+                    const tipo = data.authorize.is_virtual ? "CONTA DEMONSTRAÇÃO" : "CONTA REAL";
+                    document.getElementById('acc-type').innerText = tipo;
+
+                    // Pede o saldo para mostrar no ecrã
                     ws.send(JSON.stringify({ balance: 1, subscribe: 1 }));
                 }
 
@@ -87,10 +102,6 @@
                     document.getElementById('balance-display').innerText = `$ ${data.balance.balance.toFixed(2)}`;
                 }
             };
-        }
-
-        function logout() {
-            window.location.href = REDIRECT_URI;
         }
     </script>
 </body>
