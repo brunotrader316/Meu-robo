@@ -1,199 +1,174 @@
-<!DOCTYPE html>
-<html lang="pt-br">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Expert Vision | Neural Interface</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;900&family=Inter:wght@300;600&display=swap');
-        body { background: #010409; color: #e6edf3; font-family: 'Inter', sans-serif; overflow: hidden; }
-        .cyber-panel { background: rgba(13, 17, 23, 0.8); backdrop-filter: blur(20px); border: 1px solid #30363d; border-top: 4px solid #0891b2; }
-        .btn-glow { background: linear-gradient(135deg, #0891b2 0%, #0369a1 100%); transition: 0.4s; color: white; font-weight: 900; letter-spacing: 1px; }
-        .btn-glow:hover { transform: scale(1.02); box-shadow: 0 0 25px rgba(8, 145, 178, 0.4); }
-        .hidden-step { display: none !important; }
-        .font-cyber { font-family: 'Orbitron', sans-serif; }
-    </style>
-</head>
-<body class="h-screen flex items-center justify-center p-6">
+/**
+ * EXPERT VISION - TRADING TERMINAL
+ * Versão Consolidada: Blocos 1 ao 10
+ */
 
-    <div id="step-portal" class="w-full max-w-md cyber-panel p-10 rounded-[2.5rem] text-center shadow-2xl">
-        <div class="mb-10">
-            <h1 class="text-3xl font-cyber italic uppercase">Expert <span class="text-cyan-400">Vision</span></h1>
-            <div class="h-1 w-20 bg-cyan-500 mx-auto mt-2"></div>
-        </div>
-        <div class="space-y-4">
-            <input id="user-name" type="text" placeholder="ID DO OPERADOR" class="w-full p-4 bg-black border border-slate-800 rounded-xl text-center text-cyan-400 font-mono focus:border-cyan-500 outline-none">
-            <button onclick="loginPortal()" class="btn-glow w-full py-5 rounded-2xl uppercase text-xs">Acessar Terminal</button>
-        </div>
-    </div>
+const EXPERT_VISION = {
+    // --- BLOCO 1 & 7: CONFIGURAÇÕES ---
+    config: {
+        CLIENT_ID: '33eu4HBakeGnrJSiITpaR',
+        REDIRECT_URI: 'https://brunotrader316.github.io/Meu-robo',
+        API_BASE: 'https://api.derivws.com',
+        AUTH_BASE: 'https://auth.deriv.com/oauth2',
+        PUBLIC_WS: 'wss://ws.binaryws.com/websockets/v3?app_id=33eu4HBakeGnrJSiITpaR',
+        
+        accessToken: null,
+        accountId: null,
+        currentProposalId: null
+    },
 
-    <div id="step-connect" class="hidden-step w-full max-w-md cyber-panel p-10 rounded-[2.5rem] text-center">
-        <div class="mb-8 flex flex-col items-center">
-            <div class="w-16 h-16 bg-cyan-500/10 rounded-full flex items-center justify-center mb-4 border border-cyan-500/30">
-                <i class="fas fa-network-wired text-cyan-400 text-2xl"></i>
-            </div>
-            <h2 class="text-xl font-bold font-cyber">Conexão Deriv</h2>
-            <p class="text-[10px] text-slate-500 uppercase mt-2">Sincronização Necessária</p>
-        </div>
-        <button onclick="iniciarFluxoOAuth()" class="btn-glow w-full py-5 rounded-2xl uppercase text-xs flex items-center justify-center gap-3">
-            <i class="fas fa-shield-halved"></i> Autorizar via PKCE
-        </button>
-        <p id="status-log" class="text-[9px] text-slate-600 mt-6 font-mono uppercase tracking-widest">Aguardando Validação...</p>
-    </div>
+    socket: null,
 
-    <div id="step-robot" class="hidden-step w-full max-w-6xl grid grid-cols-12 gap-6 h-[85vh]">
-        <aside class="col-span-12 lg:col-span-4 flex flex-col gap-4">
-            <div class="cyber-panel p-8 rounded-[2rem] flex-1 flex flex-col gap-6">
-                <div class="flex items-center gap-4 border-b border-slate-800 pb-4">
-                    <div id="led" class="w-3 h-3 rounded-full bg-red-600 shadow-[0_0_10px_red]"></div>
-                    <span id="account-type" class="text-[10px] font-black text-slate-400 uppercase font-cyber">Desconectado</span>
-                </div>
+    // --- BLOCO 7: UTILITÁRIOS CRIPTOGRÁFICOS PKCE ---
+    pkce: {
+        generateVerifier() {
+            const array = new Uint8Array(32);
+            crypto.getRandomValues(array);
+            return btoa(String.fromCharCode(...array)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+        },
+        async generateChallenge(verifier) {
+            const encoder = new TextEncoder();
+            const data = encoder.encode(verifier);
+            const digest = await crypto.subtle.digest('SHA-256', data);
+            return btoa(String.fromCharCode(...new Uint8Array(digest))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+        }
+    },
+
+    // --- FASE DE CONEXÃO E AUTENTICAÇÃO (BLOCOS 7 & 8) ---
+    async iniciarLogin() {
+        const verifier = this.pkce.generateVerifier();
+        const challenge = await this.pkce.generateChallenge(verifier);
+        const state = crypto.randomUUID();
+
+        sessionStorage.setItem('code_verifier', verifier);
+        sessionStorage.setItem('oauth_state', state);
+
+        const authUrl = new URL(`${this.config.AUTH_BASE}/auth`);
+        authUrl.searchParams.set('response_type', 'code');
+        authUrl.searchParams.set('client_id', this.config.CLIENT_ID);
+        authUrl.searchParams.set('redirect_uri', this.config.REDIRECT_URI);
+        authUrl.searchParams.set('scope', 'read trade account_manage payments');
+        authUrl.searchParams.set('state', state);
+        authUrl.searchParams.set('code_challenge', challenge);
+        authUrl.searchParams.set('code_challenge_method', 'S256');
+
+        window.location.href = authUrl.toString();
+    },
+
+    async processarRetornoCallback() {
+        const params = new URLSearchParams(window.location.search);
+        const code = params.get('code');
+        const state = params.get('state');
+        const savedState = sessionStorage.getItem('oauth_state');
+
+        if (code && state === savedState) {
+            const verifier = sessionStorage.getItem('code_verifier');
+            try {
+                // Troca de Token (Bloco 7)
+                const response = await fetch(`${this.config.AUTH_BASE}/token`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: new URLSearchParams({
+                        grant_type: 'authorization_code',
+                        client_id: this.config.CLIENT_ID,
+                        code: code,
+                        redirect_uri: this.config.REDIRECT_URI,
+                        code_verifier: verifier
+                    })
+                });
+                const data = await response.json();
+                this.config.accessToken = data.access_token;
                 
-                <div class="space-y-2">
-                    <p class="text-[9px] text-slate-500 font-bold uppercase">Saldo em Tempo Real</p>
-                    <h3 id="balance-val" class="text-4xl font-cyber font-black text-white">$ 0.00</h3>
-                </div>
-
-                <button id="btn-start" disabled class="btn-glow w-full py-6 rounded-2xl uppercase text-sm mt-auto opacity-30 cursor-not-allowed">
-                    <i class="fas fa-play mr-2"></i> Iniciar Operação
-                </button>
-            </div>
-        </aside>
-
-        <main class="col-span-12 lg:col-span-8 cyber-panel p-8 rounded-[2.5rem] flex flex-col">
-            <div class="flex-1 overflow-y-auto font-mono text-[11px] space-y-2" id="console">
-                <div class="text-cyan-500/50">> Kernel Expert Vision Inicializado...</div>
-            </div>
-        </main>
-    </div>
-
-    <script>
-        // --- ESTUDO TÉCNICO DOS LINKS (CONFIGURAÇÕES) ---
-        const CLIENT_ID = '33e1UPy4LXVMuK8F8PU3t';
-        const REDIRECT_URI = 'https://brunotrader316.github.io/Meu-robo';
-        const AUTH_URL = 'https://auth.deriv.com/oauth2/auth';
-        const TOKEN_URL = 'https://auth.deriv.com/oauth2/token';
-
-        // 1. GERAR PKCE (Baseado em developers.deriv.com/docs/intro/oauth/)
-        async function gerarPKCE() {
-            const verifier = Array.from(crypto.getRandomValues(new Uint8Array(64)))
-                .map(v => 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~'[v % 66]).join('');
-            
-            const hash = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(verifier));
-            const challenge = btoa(String.fromCharCode(...new Uint8Array(hash)))
-                .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
-            
-            const state = Math.random().toString(36).substring(2);
-            return { verifier, challenge, state };
+                // Descoberta de Conta (Bloco 6)
+                await this.identificarContaPrincipal();
+            } catch (err) { console.error("Erro na autenticação:", err); }
+        } else {
+            // Se não houver código, inicia dados públicos (Bloco 10)
+            this.conectarDadosPublicos();
         }
+    },
 
-        function loginPortal() {
-            if(!document.getElementById('user-name').value) return;
-            sessionStorage.setItem('portal_auth', 'true');
-            switchStep('step-connect');
-        }
-
-        // 2. REDIRECIONAMENTO (Etapa de Autorização)
-        async function iniciarFluxoOAuth() {
-            const pkce = await gerarPKCE();
-            sessionStorage.setItem('pkce_verifier', pkce.verifier);
-            sessionStorage.setItem('oauth_state', pkce.state);
-
-            const params = new URLSearchParams({
-                response_type: 'code',
-                client_id: CLIENT_ID,
-                redirect_uri: REDIRECT_URI,
-                scope: 'read trade payments account_manage',
-                state: pkce.state,
-                code_challenge: pkce.challenge,
-                code_challenge_method: 'S256'
-            });
-
-            window.location.href = `${AUTH_URL}?${params.toString()}`;
-        }
-
-        // 3. TRATAMENTO DE RETORNO E TROCA DE TOKEN (Implementação Detalhada)
-        window.onload = async () => {
-            const urlParams = new URLSearchParams(window.location.search);
-            const code = urlParams.get('code');
-            const state = urlParams.get('state');
-            const storedState = sessionStorage.getItem('oauth_state');
-            const verifier = sessionStorage.getItem('pkce_verifier');
-
-            if (code && state === storedState) {
-                switchStep('step-robot');
-                addLog("Código detectado. Solicitando Access Token...");
-                
-                // Realiza a troca do código pelo token de acesso
-                try {
-                    const response = await fetch(TOKEN_URL, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                        body: new URLSearchParams({
-                            grant_type: 'authorization_code',
-                            client_id: CLIENT_ID,
-                            code: code,
-                            code_verifier: verifier,
-                            redirect_uri: REDIRECT_URI
-                        })
-                    });
-                    
-                    const data = await response.json();
-                    if(data.access_token) {
-                        conectarWS(data.access_token);
-                        // Limpeza conforme documentação
-                        sessionStorage.removeItem('pkce_verifier');
-                        sessionStorage.removeItem('oauth_state');
-                    }
-                } catch (e) { addLog("Erro na troca de token.", "text-red-500"); }
-            } else if (sessionStorage.getItem('portal_auth')) {
-                switchStep('step-connect');
-            }
+    // --- FASE ANALÍTICA (BLOCO 10) ---
+    conectarDadosPublicos() {
+        this.socket = new WebSocket(this.config.PUBLIC_WS);
+        this.socket.onopen = () => {
+            console.log("✓ Modo Analítico: Dados Públicos Conectados");
+            this.enviar({ active_symbols: "brief", req_id: 1 });
+            this.enviar({ ticks_history: "1HZ100V", count: 100, end: "latest", style: "ticks", req_id: 3 });
         };
+        this.socket.onmessage = (msg) => this.gerenciarMensagem(JSON.parse(msg.data));
+    },
 
-        // 4. CONEXÃO WEBSOCKET (Baseado em developers.deriv.com/docs/options/websocket/)
-        function conectarWS(token) {
-            const ws = new WebSocket(`wss://ws.binaryws.com/websockets/v3?app_id=${CLIENT_ID}`);
-            
-            ws.onopen = () => {
-                addLog("WebSocket Aberto. Autenticando...");
-                ws.send(JSON.stringify({ authorize: token }));
-            };
-
-            ws.onmessage = (msg) => {
-                const res = JSON.parse(msg.data);
-                
-                // Endpoint: Authorize
-                if (res.msg_type === 'authorize') {
-                    addLog("Sessão Autorizada com Sucesso!", "text-green-400");
-                    document.getElementById('led').className = "w-3 h-3 rounded-full bg-green-500 shadow-[0_0_10px_#22c55e]";
-                    document.getElementById('account-type').innerText = res.authorize.is_virtual ? "CONTA VIRTUAL" : "CONTA REAL";
-                    document.getElementById('btn-start').disabled = false;
-                    document.getElementById('btn-start').classList.remove('opacity-30', 'cursor-not-allowed');
-                    
-                    // Endpoint: Balance (Inscrição para atualizações contínuas)
-                    ws.send(JSON.stringify({ balance: 1, subscribe: 1 }));
-                }
-
-                // Endpoint: Balance Update
-                if (res.msg_type === 'balance') {
-                    document.getElementById('balance-val').innerText = `$ ${res.balance.balance.toLocaleString('en-US', {minimumFractionDigits: 2})}`;
-                }
-            };
+    // --- FASE OPERACIONAL (BLOCOS 2, 8 & 9) ---
+    async identificarContaPrincipal() {
+        const res = await fetch(`${this.config.API_BASE}/trading/v1/options/accounts`, {
+            method: 'GET',
+            headers: { 'Authorization': `Bearer ${this.config.accessToken}`, 'Deriv-App-ID': this.config.CLIENT_ID }
+        });
+        const accounts = await res.json();
+        if (accounts.data?.length > 0) {
+            this.config.accountId = accounts.data[0].account_id;
+            await this.conectarTradingReal();
         }
+    },
 
-        function switchStep(id) {
-            document.querySelectorAll('body > div').forEach(div => div.classList.add('hidden-step'));
-            document.getElementById(id).classList.remove('hidden-step');
-        }
+    async conectarTradingReal() {
+        // Solicitação de OTP (Bloco 2 & 8)
+        const otpRes = await fetch(`${this.config.API_BASE}/trading/v1/options/accounts/${this.config.accountId}/otp`, {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${this.config.accessToken}`, 'Deriv-App-ID': this.config.CLIENT_ID }
+        });
+        const otpData = await otpRes.json();
+        
+        // WebSocket Autenticado (Bloco 3, 5 & 8)
+        this.socket = new WebSocket(otpData.data.url);
+        this.socket.onopen = () => {
+            console.log("✓ MODO OPERACIONAL ATIVO: Conta " + this.config.accountId);
+            this.enviar({ balance: 1, subscribe: 1, req_id: 10 });
+            this.enviar({ ticks: "1HZ100V", subscribe: 1, req_id: 20 });
+            this.solicitarProposta("1HZ100V", 10);
+        };
+        this.socket.onmessage = (msg) => this.gerenciarMensagem(JSON.parse(msg.data));
+    },
 
-        function addLog(txt, color = "text-slate-500") {
-            const con = document.getElementById('console');
-            con.innerHTML += `<div class="${color}">[${new Date().toLocaleTimeString()}] > ${txt}</div>`;
-            con.scrollTop = con.scrollHeight;
+    // --- LOGICA DE TRADING (BLOCO 4 & 9) ---
+    solicitarProposta(simbolo, valor) {
+        this.enviar({
+            proposal: 1, amount: valor, basis: "stake", contract_type: "MULTDOWN",
+            currency: "USD", duration_unit: "s", multiplier: 10,
+            underlying_symbol: simbolo, subscribe: 1, req_id: 50
+        });
+    },
+
+    executarCompra() {
+        if (this.config.currentProposalId) {
+            this.enviar({ buy: this.config.currentProposalId, price: 100, req_id: 60 });
         }
-    </script>
-</body>
-</html>
+    },
+
+    // --- CENTRAL DE MENSAGENS ---
+    gerenciarMensagem(data) {
+        switch (data.msg_type) {
+            case 'history': console.log("Análise de Histórico Carregada (Bloco 10)"); break;
+            case 'tick': document.dispatchEvent(new CustomEvent('tick_update', { detail: data.tick })); break;
+            case 'balance': console.log("Saldo Atualizado:", data.balance.balance); break;
+            case 'proposal': this.config.currentProposalId = data.proposal.id; break;
+            case 'buy': 
+                console.log("Compra Confirmada!");
+                this.enviar({ proposal_open_contract: 1, contract_id: data.buy.contract_id, subscribe: 1, req_id: 70 });
+                break;
+        }
+        console.log("Recebido:", data.msg_type, data);
+    },
+
+    enviar(obj) {
+        if (this.socket && this.socket.readyState === WebSocket.OPEN) {
+            this.socket.send(JSON.stringify(obj));
+        }
+    }
+};
+
+// Inicialização automática
+window.addEventListener('DOMContentLoaded', () => {
+    EXPERT_VISION.processarRetornoCallback();
+});
