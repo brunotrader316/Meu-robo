@@ -2,130 +2,160 @@
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
-    <title>Expert Vision | Manual Terminal</title>
+    <title>Expert Vision | Operacional PKCE</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        body { background: #020617; color: #f1f5f9; font-family: 'Inter', sans-serif; overflow: hidden; }
-        .glass { background: rgba(15, 23, 42, 0.9); backdrop-filter: blur(12px); border: 1px solid rgba(34, 211, 238, 0.1); }
-        .input-cyber { background: #010409; border: 1px solid #1e3a5f; color: #22d3ee; outline: none; transition: 0.3s; }
-        .input-cyber:focus { border-color: #06b6d4; box-shadow: 0 0 15px rgba(6, 182, 212, 0.2); }
-        .btn-glow { background: linear-gradient(135deg, #0891b2 0%, #2563eb 100%); transition: 0.3s; font-weight: 900; color: white; cursor: pointer; }
-        .btn-glow:hover { transform: translateY(-2px); box-shadow: 0 5px 20px rgba(8, 145, 178, 0.4); }
+        body { background: #000; color: #fff; font-family: 'Inter', sans-serif; }
+        .glass { background: rgba(15, 23, 42, 0.9); backdrop-filter: blur(10px); border: 1px solid #1e3a5f; }
+        .btn-glow { background: linear-gradient(135deg, #0891b2 0%, #2563eb 100%); transition: 0.3s; cursor: pointer; font-weight: bold; }
         .hidden-step { display: none !important; }
     </style>
 </head>
-<body class="h-screen flex items-center justify-center p-4 bg-black">
+<body class="h-screen flex items-center justify-center p-4">
 
-    <div id="site-login" class="w-full max-w-md glass p-10 rounded-[2.5rem] text-center border-t-4 border-cyan-500">
-        <div class="mb-8">
-            <h1 class="text-2xl font-black italic uppercase text-white">Expert <span class="text-cyan-400">Vision</span></h1>
-            <p class="text-[10px] text-slate-500 font-bold uppercase mt-2">Área de Acesso</p>
+    <div id="auth-card" class="w-full max-w-md glass p-10 rounded-[2.5rem] text-center border-t-4 border-cyan-500">
+        <h1 class="text-2xl font-black italic uppercase mb-2">Expert <span class="text-cyan-400">Vision</span></h1>
+        <p class="text-[10px] text-slate-500 font-bold uppercase tracking-widest mb-8">OAuth2 + PKCE System</p>
+
+        <div id="setup-area" class="space-y-4">
+            <button onclick="iniciarFluxoDeriv()" class="btn-glow w-full py-4 rounded-xl uppercase text-xs text-white">
+                Autorizar com Deriv
+            </button>
+            <div id="status-msg" class="text-[10px] text-slate-400 font-mono italic">Aguardando início...</div>
         </div>
-        <input id="user-name" type="text" placeholder="Seu Nome de Usuário" class="input-cyber w-full p-4 mb-4 rounded-xl text-sm text-center">
-        <button onclick="entrarNoSite()" class="btn-glow w-full py-4 rounded-xl uppercase text-xs">Entrar no Sistema</button>
     </div>
 
-    <div id="dashboard" class="hidden-step w-full max-w-6xl grid grid-cols-12 gap-6 h-[90vh]">
-        
-        <aside class="col-span-12 lg:col-span-4 flex flex-col gap-4">
-            <div class="glass p-8 rounded-[2rem] flex-1 flex flex-col gap-6 border-l-4 border-cyan-500">
-                <div class="space-y-4">
-                    <h3 class="text-xs font-black uppercase text-slate-400">Acesso à API</h3>
-                    
-                    <div class="relative">
-                        <input id="manual-token" type="password" placeholder="Cole seu token PAT aqui..." 
-                               class="input-cyber w-full p-4 rounded-xl text-xs pr-12">
-                        <button onclick="conectarComTokenManual()" class="absolute right-3 top-3 text-cyan-500 hover:text-cyan-300">
-                            <i id="sync-icon" class="fas fa-sync-alt"></i>
-                        </button>
-                    </div>
-
-                    <div class="p-4 bg-slate-950/80 rounded-xl border border-slate-800 flex items-center gap-3">
-                        <div id="status-led" class="w-2.5 h-2.5 rounded-full bg-red-600 shadow-[0_0_8px_red]"></div>
-                        <span id="status-text" class="text-[9px] font-bold text-slate-500 uppercase">Aguardando Token...</span>
-                    </div>
-                </div>
-
-                <button id="btn-start" disabled class="btn-glow w-full py-5 rounded-2xl uppercase text-sm mt-auto opacity-20 cursor-not-allowed">
-                    Iniciar Algoritmo
-                </button>
+    <div id="robot-ui" class="hidden-step w-full max-w-lg glass p-8 rounded-3xl text-center">
+        <div class="flex items-center justify-between mb-6">
+            <div class="flex items-center gap-2">
+                <div class="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
+                <span class="text-xs font-bold text-green-400">SISTEMA ATIVO</span>
             </div>
-        </aside>
-
-        <main class="col-span-12 lg:col-span-8 flex flex-col gap-4">
-            <div class="grid grid-cols-3 gap-4">
-                <div class="glass p-6 rounded-[2rem] text-center">
-                    <p class="text-[9px] text-slate-500 font-bold uppercase">Saldo Atual</p>
-                    <h4 id="balance" class="text-3xl font-black text-white font-mono">$ 0.00</h4>
-                </div>
-            </div>
-
-            <div class="glass p-8 rounded-[2.5rem] flex-1 flex flex-col overflow-hidden">
-                <div id="logs" class="flex-1 overflow-y-auto font-mono text-[11px] space-y-2 text-slate-400">
-                    <div class="text-cyan-500/50 italic">> Sistema manual pronto para receber token.</div>
-                </div>
-            </div>
-        </main>
+            <h2 id="balance-display" class="text-2xl font-mono font-black">$ 0.00</h2>
+        </div>
+        <button class="btn-glow w-full py-4 rounded-xl uppercase">Iniciar Operações</button>
     </div>
 
     <script>
-        const APP_ID = '33e1UPy4LXVMuK8F8PU3t'; // Seu App ID configurado
-        let ws;
+        // CONFIGURAÇÕES
+        const CLIENT_ID = '33e1UPy4LXVMuK8F8PU3t';
+        const REDIRECT_URI = 'https://brunotrader316.github.io/Meu-robo';
+        const AUTH_URL = 'https://auth.deriv.com/oauth2/auth';
+        const TOKEN_URL = 'https://auth.deriv.com/oauth2/token';
 
-        function entrarNoSite() {
-            if(!document.getElementById('user-name').value) return alert("Identifique-se para continuar.");
-            document.getElementById('site-login').classList.add('hidden-step');
-            document.getElementById('dashboard').classList.remove('hidden-step');
+        // ETAPA 1: GERAR PARÂMETROS PKCE (Scripts que você enviou)
+        async function gerarParametrosPKCE() {
+            // 1. Generate code_verifier
+            const array = crypto.getRandomValues(new Uint8Array(64));
+            const codeVerifier = Array.from(array)
+                .map(v => 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~'[v % 66])
+                .join('');
+
+            // 2. Derive code_challenge
+            const hash = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(codeVerifier));
+            const codeChallenge = btoa(String.fromCharCode(...new Uint8Array(hash)))
+                .replace(/\+/g, '-')
+                .replace(/\//g, '_')
+                .replace(/=+$/, '');
+
+            // 3. Generate state
+            const state = crypto.getRandomValues(new Uint8Array(16))
+                .reduce((s, b) => s + b.toString(16).padStart(2, '0'), '');
+
+            return { codeVerifier, codeChallenge, state };
         }
 
-        function conectarComTokenManual() {
-            const token = document.getElementById('manual-token').value;
-            if(!token) return alert("Por favor, cole seu token.");
+        // ETAPA 2: REDIRECIONAR PARA DERIV
+        async function iniciarFluxoDeriv() {
+            updateStatus("Gerando chaves de segurança PKCE...");
+            const pkce = await gerarParametrosPKCE();
 
-            document.getElementById('sync-icon').classList.add('animate-spin');
-            addLog("Validando token manual...", "text-yellow-500");
+            // 4. Store code_verifier and state (Sua regra de sessionStorage)
+            sessionStorage.setItem('pkce_code_verifier', pkce.codeVerifier);
+            sessionStorage.setItem('oauth_state', pkce.state);
 
-            ws = new WebSocket(`wss://ws.binaryws.com/websockets/v3?app_id=${APP_ID}`);
-            
-            ws.onopen = () => ws.send(JSON.stringify({ authorize: token }));
+            const params = new URLSearchParams({
+                response_type: 'code',
+                client_id: CLIENT_ID,
+                redirect_uri: REDIRECT_URI,
+                scope: 'trade account_manage',
+                state: pkce.state,
+                code_challenge: pkce.codeChallenge,
+                code_challenge_method: 'S256'
+            });
 
-            ws.onmessage = (msg) => {
-                const data = JSON.parse(msg.data);
-                
-                if (data.error) {
-                    addLog("ERRO: Token inválido ou expirado.", "text-red-500");
-                    document.getElementById('sync-icon').classList.remove('animate-spin');
+            window.location.href = `${AUTH_URL}?${params.toString()}`;
+        }
+
+        // ETAPA 3 & 4: LIDAR COM O RETORNO E TROCAR CÓDIGO POR TOKEN
+        window.onload = async () => {
+            const urlParams = new URLSearchParams(window.location.search);
+            const code = urlParams.get('code');
+            const returnedState = urlParams.get('state');
+            const storedState = sessionStorage.getItem('oauth_state');
+            const codeVerifier = sessionStorage.getItem('pkce_code_verifier');
+
+            if (code) {
+                // ETAPA 3.1: Verificar Estado (Proteção CSRF)
+                if (returnedState !== storedState) {
+                    updateStatus("ERRO: Estado de segurança inválido!");
                     return;
                 }
 
-                if (data.msg_type === 'authorize') {
-                    addLog("TOKEN VALIDADO COM SUCESSO!", "text-green-400 font-bold");
-                    
-                    // Ajuste Visual
-                    document.getElementById('status-led').className = "w-2.5 h-2.5 rounded-full bg-green-500 shadow-[0_0_10px_#22c55e]";
-                    document.getElementById('status-text').innerText = data.authorize.is_virtual ? "CONTA DEMO ATIVA" : "CONTA REAL ATIVA";
-                    document.getElementById('status-text').className = "text-[9px] font-bold text-green-400 uppercase";
-                    
-                    document.getElementById('btn-start').disabled = false;
-                    document.getElementById('btn-start').classList.remove('opacity-20', 'cursor-not-allowed');
-                    document.getElementById('sync-icon').classList.remove('animate-spin');
-                    
-                    ws.send(JSON.stringify({ balance: 1, subscribe: 1 }));
-                }
+                updateStatus("Código recebido. Trocando por token...");
+                trocarCodigoPorToken(code, codeVerifier);
+            }
+        };
 
-                if (data.msg_type === 'balance') {
-                    document.getElementById('balance').innerText = `$ ${data.balance.balance.toFixed(2)}`;
+        async function trocarCodigoPorToken(code, verifier) {
+            try {
+                const response = await fetch(TOKEN_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: new URLSearchParams({
+                        grant_type: 'authorization_code',
+                        client_id: CLIENT_ID,
+                        code: code,
+                        code_verifier: verifier,
+                        redirect_uri: REDIRECT_URI
+                    })
+                });
+
+                const data = await response.json();
+
+                if (data.access_token) {
+                    updateStatus("Autenticado com sucesso!");
+                    // Limpa dados sensíveis do storage como instruído
+                    sessionStorage.removeItem('pkce_code_verifier');
+                    sessionStorage.removeItem('oauth_state');
+                    
+                    iniciarInterfaceRobo(data.access_token);
+                } else {
+                    updateStatus("Erro ao obter token: " + (data.error || "Desconhecido"));
+                }
+            } catch (err) {
+                updateStatus("Erro de conexão no servidor de tokens.");
+            }
+        }
+
+        function iniciarInterfaceRobo(token) {
+            document.getElementById('auth-card').classList.add('hidden-step');
+            document.getElementById('robot-ui').classList.remove('hidden-step');
+            
+            // Conectar via WebSocket para pegar saldo usando o Bearer Token
+            const ws = new WebSocket(`wss://ws.binaryws.com/websockets/v3?app_id=${CLIENT_ID}`);
+            ws.onopen = () => ws.send(JSON.stringify({ authorize: token }));
+            ws.onmessage = (msg) => {
+                const res = JSON.parse(msg.data);
+                if (res.msg_type === 'authorize') {
+                    document.getElementById('balance-display').innerText = `$ ${res.authorize.balance}`;
                 }
             };
         }
 
-        function addLog(msg, color = "text-slate-500") {
-            const logs = document.getElementById('logs');
-            const d = document.createElement('div');
-            d.className = color + " border-l border-slate-800 pl-3";
-            d.innerHTML = `[${new Date().toLocaleTimeString()}] ${msg}`;
-            logs.prepend(d);
+        function updateStatus(txt) {
+            document.getElementById('status-msg').innerText = txt;
         }
     </script>
 </body>
