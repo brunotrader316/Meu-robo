@@ -2,148 +2,108 @@
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
-    <title>Expert Vision | OAuth 2.0 PKCE</title>
+    <title>Expert Vision | Ultra Terminal</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body { background: #020617; color: #f1f5f9; font-family: 'Inter', sans-serif; overflow: hidden; }
+        .glass { background: rgba(15, 23, 42, 0.7); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.05); }
+        .input-dark { background: #011627; border: 1px solid #1e3a5f; color: #22d3ee; padding: 12px; border-radius: 12px; width: 100%; outline: none; transition: 0.3s; }
+        .input-dark:focus { border-color: #06b6d4; box-shadow: 0 0 15px rgba(6, 182, 212, 0.2); }
+        .btn-run { background: linear-gradient(135deg, #0891b2 0%, #2563eb 100%); transition: 0.3s; font-weight: 900; }
+        .btn-run:hover { transform: translateY(-2px); box-shadow: 0 10px 20px rgba(8, 145, 178, 0.4); }
+        .log-box { height: 300px; font-family: 'Fira Code', monospace; font-size: 11px; scroll-behavior: smooth; }
+        ::-webkit-scrollbar { width: 4px; }
+        ::-webkit-scrollbar-thumb { background: #1e3a5f; border-radius: 10px; }
+    </style>
 </head>
-<body class="bg-slate-900 text-white flex items-center justify-center min-h-screen font-sans p-4">
+<body class="h-screen flex flex-col p-6">
 
-    <div id="auth-screen" class="bg-slate-800 p-8 rounded-3xl shadow-2xl w-full max-w-md border border-slate-700 text-center">
-        <h1 class="text-3xl font-black italic mb-2 uppercase">Expert <span class="text-cyan-400">Vision</span></h1>
-        <p class="text-slate-500 text-[10px] mb-8 font-bold tracking-widest uppercase">Tecnologia OAuth 2.0 + PKCE</p>
+    <header class="flex justify-between items-center mb-6">
+        <div class="flex items-center gap-4">
+            <div class="p-3 bg-cyan-500/10 rounded-2xl border border-cyan-500/20">
+                <i class="fas fa-microchip text-cyan-400 text-2xl"></i>
+            </div>
+            <div>
+                <h1 class="text-2xl font-black italic tracking-tighter uppercase">Expert <span class="text-cyan-400">Vision</span></h1>
+                <p class="text-[9px] text-slate-500 font-bold tracking-[0.2em]">ALGORITMO V3.5 PRO</p>
+            </div>
+        </div>
+        <div class="flex gap-6 items-center">
+            <div class="text-right">
+                <p id="status-label" class="text-[10px] font-bold text-red-500 uppercase tracking-widest">• Offline</p>
+                <h2 id="balance-val" class="text-3xl font-black font-mono">$ 0.00</h2>
+            </div>
+        </div>
+    </header>
+
+    <div class="grid grid-cols-12 gap-6 flex-1 overflow-hidden">
         
-        <button onclick="iniciarFluxoOAuth()" class="w-full py-4 bg-cyan-600 hover:bg-cyan-500 rounded-xl font-bold uppercase transition-all shadow-lg flex items-center justify-center gap-3">
-            <i class="fab fa-buffer"></i> Conectar via Deriv Oficial
-        </button>
-        <p class="text-[9px] text-slate-500 mt-4 italic text-balance">O login é processado nos servidores da Deriv. Suas credenciais estão 100% seguras.</p>
-    </div>
-
-    <div id="dashboard" class="hidden w-full max-w-5xl animate-fadeIn space-y-6">
-        <header class="bg-slate-800 p-6 rounded-2xl border border-slate-700 flex justify-between items-center shadow-xl">
-            <div class="flex items-center gap-4">
-                <div class="w-12 h-12 bg-cyan-500/20 rounded-full flex items-center justify-center">
-                    <i class="fas fa-chart-line text-cyan-400 text-xl"></i>
-                </div>
+        <aside class="col-span-12 lg:col-span-4 space-y-4 overflow-y-auto pr-2">
+            <div class="glass p-6 rounded-3xl space-y-4">
+                <h3 class="text-xs font-black text-slate-400 uppercase flex items-center gap-2">
+                    <i class="fas fa-cogs text-cyan-400"></i> Parâmetros de Operação
+                </h3>
+                
                 <div>
-                    <span id="account-badge" class="text-[10px] font-bold text-green-400 uppercase tracking-widest">• Validado</span>
-                    <h2 id="balance-display" class="text-3xl font-black font-mono">$ 0.00</h2>
+                    <label class="text-[10px] text-slate-500 font-bold uppercase ml-1">Estratégia Ativa</label>
+                    <select id="strategy" class="input-dark mt-1 text-sm bg-slate-950">
+                        <option value="diff">Dígitos Diferentes (Consistência)</option>
+                        <option value="match">Dígitos Iguais (Explosivo 9x)</option>
+                        <option value="over">Dígitos Over 2 (Tendência)</option>
+                    </select>
+                </div>
+
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="text-[10px] text-slate-500 font-bold uppercase ml-1">Entrada ($)</label>
+                        <input id="stake" type="number" value="0.35" step="0.01" class="input-dark mt-1">
+                    </div>
+                    <div>
+                        <label class="text-[10px] text-slate-500 font-bold uppercase ml-1">V-Loss (Espera)</label>
+                        <input id="v-limit" type="number" value="3" class="input-dark mt-1">
+                    </div>
+                </div>
+
+                <button id="btn-master" onclick="startEngine()" class="btn-run w-full py-5 rounded-2xl uppercase text-sm mt-4">
+                    <i class="fas fa-play-circle mr-2"></i> Iniciar Operações
+                </button>
+            </div>
+
+            <div class="glass p-6 rounded-3xl">
+                <h3 class="text-xs font-black text-slate-400 uppercase mb-4">Informação da Conta</h3>
+                <div class="flex items-center justify-between text-sm">
+                    <span class="text-slate-500">ID do App:</span>
+                    <span class="font-mono text-cyan-400">33e1UPy...</span>
+                </div>
+                <div class="flex items-center justify-between text-sm mt-2">
+                    <span class="text-slate-500">Token Status:</span>
+                    <span class="text-green-500 font-bold uppercase text-[10px]">Ativo & Validado</span>
                 </div>
             </div>
-            <button onclick="logout()" class="text-xs font-bold text-red-500 hover:bg-red-500/10 px-4 py-2 rounded-lg transition">SAIR</button>
-        </header>
+        </aside>
 
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div class="bg-slate-800 p-6 rounded-2xl border border-slate-700 text-center">
-                <p class="text-xs text-slate-500 font-bold uppercase mb-2">Status do Robô</p>
-                <p class="text-cyan-400 font-black">AGUARDANDO COMANDO</p>
+        <main class="col-span-12 lg:col-span-8 flex flex-col gap-4">
+            <div class="grid grid-cols-3 gap-4">
+                <div class="glass p-6 rounded-3xl text-center border-b-4 border-green-500/50">
+                    <p class="text-[10px] text-slate-500 font-bold uppercase">Wins</p>
+                    <h4 id="win-count" class="text-3xl font-black text-white">0</h4>
+                </div>
+                <div class="glass p-6 rounded-3xl text-center border-b-4 border-red-500/50">
+                    <p class="text-[10px] text-slate-500 font-bold uppercase">Losses</p>
+                    <h4 id="loss-count" class="text-3xl font-black text-white">0</h4>
+                </div>
+                <div class="glass p-6 rounded-3xl text-center border-b-4 border-cyan-500/50">
+                    <p class="text-[10px] text-slate-500 font-bold uppercase">Virtual Loss</p>
+                    <h4 id="v-display" class="text-3xl font-black text-cyan-400">0</h4>
+                </div>
             </div>
-            </div>
-    </div>
 
-    <script>
-        const CLIENT_ID = '33e1UPy4LXVMuK8F8PU3t';
-        const REDIRECT_URI = window.location.href.split('?')[0];
-
-        // --- ETAPA 1: GERAR PKCE (CONFORME O GUIA) ---
-        async function gerarDesafioPKCE() {
-            const array = crypto.getRandomValues(new Uint8Array(64));
-            const codeVerifier = Array.from(array)
-                .map(v => 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~'[v % 66])
-                .join('');
-
-            const hash = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(codeVerifier));
-            const codeChallenge = btoa(String.fromCharCode(...new Uint8Array(hash)))
-                .replace(/\+/g, '-')
-                .replace(/\//g, '_')
-                .replace(/=+$/, '');
-
-            const state = Array.from(crypto.getRandomValues(new Uint8Array(16)))
-                .map(b => b.toString(16).padStart(2, '0')).join('');
-
-            sessionStorage.setItem('pkce_code_verifier', codeVerifier);
-            sessionStorage.setItem('oauth_state', state);
-
-            return { codeChallenge, state };
-        }
-
-        // --- ETAPA 2: REDIRECIONAR (CONFORME O GUIA) ---
-        async function iniciarFluxoOAuth() {
-            const { codeChallenge, state } = await gerarDesafioPKCE();
-            const authUrl = `https://auth.deriv.com/oauth2/auth?` + 
-                `response_type=code` +
-                `&client_id=${CLIENT_ID}` +
-                `&redirect_uri=${encodeURIComponent(REDIRECT_URI)}` +
-                `&scope=trade+account_manage+payments` +
-                `&state=${state}` +
-                `&code_challenge=${codeChallenge}` +
-                `&code_challenge_method=S256`;
-            
-            window.location.href = authUrl;
-        }
-
-        // --- ETAPA 3 E 4: LIDAR COM O RETORNO E TROCAR CÓDIGO ---
-        window.onload = async () => {
-            const params = new URLSearchParams(window.location.search);
-            const code = params.get('code');
-            const returnedState = params.get('state');
-            const storedState = sessionStorage.getItem('oauth_state');
-            const codeVerifier = sessionStorage.getItem('pkce_code_verifier');
-
-            if (code) {
-                // Validação de segurança State (conforme o guia)
-                if (returnedState !== storedState) {
-                    alert("Erro de segurança: State inválido!");
-                    return;
-                }
-
-                document.getElementById('auth-screen').innerHTML = `<div class="animate-pulse text-cyan-400 font-bold uppercase">Trocando Código por Token...</div>`;
-
-                // Troca de Token (O guia sugere backend, mas a Deriv permite via WS com PKCE para Apps Front-end)
-                autenticarViaWS(code, codeVerifier);
-            }
-        };
-
-        function autenticarViaWS(code, verifier) {
-            const ws = new WebSocket(`wss://ws.binaryws.com/websockets/v3?app_id=${CLIENT_ID}`);
-
-            ws.onopen = () => {
-                // No fluxo PKCE da Deriv, você pode enviar o código de autorização diretamente no authorize
-                ws.send(JSON.stringify({ 
-                    authorize: code, // A API da Deriv aceita o code aqui no fluxo OAuth
-                    code_verifier: verifier 
-                }));
-            };
-
-            ws.onmessage = (msg) => {
-                const data = JSON.parse(msg.data);
-
-                if (data.error) {
-                    alert("Erro na troca de token: " + data.error.message);
-                    window.location.href = REDIRECT_URI;
-                    return;
-                }
-
-                if (data.msg_type === 'authorize') {
-                    // SUCESSO!
-                    sessionStorage.removeItem('pkce_code_verifier');
-                    sessionStorage.removeItem('oauth_state');
-                    
-                    document.getElementById('auth-screen').classList.add('hidden');
-                    document.getElementById('dashboard').classList.remove('hidden');
-                    
-                    ws.send(JSON.stringify({ balance: 1, subscribe: 1 }));
-                }
-
-                if (data.msg_type === 'balance') {
-                    document.getElementById('balance-display').innerText = `$ ${data.balance.balance.toFixed(2)}`;
-                }
-            };
-        }
-
-        function logout() {
-            sessionStorage.clear();
-            window.location.href = REDIRECT_URI;
-        }
-    </script>
-</body>
-</html>
+            <div class="glass p-6 rounded-3xl flex-1 flex flex-col overflow-hidden">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-xs font-black text-slate-400 uppercase">Monitor de Ticks & Transações</h3>
+                    <span class="px-2 py-1 bg-cyan-500/10 text-cyan-400 text-[9px] font-bold rounded">LIVE FEED</span>
+                </div>
+                <div id="logs" class="log-box overflow-y-auto space-y-2">
+                    <div class="text-slate-600 italic">Pronto para processar dados via Token 33eu4HB...</div>
+                </div>
