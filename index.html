@@ -2,7 +2,7 @@
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
-    <title>Expert Vision | Neural Terminal</title>
+    <title>Expert Vision | Manual Terminal</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
@@ -10,113 +10,82 @@
         .glass { background: rgba(15, 23, 42, 0.9); backdrop-filter: blur(12px); border: 1px solid rgba(34, 211, 238, 0.1); }
         .input-cyber { background: #010409; border: 1px solid #1e3a5f; color: #22d3ee; outline: none; transition: 0.3s; }
         .input-cyber:focus { border-color: #06b6d4; box-shadow: 0 0 15px rgba(6, 182, 212, 0.2); }
-        .btn-glow { background: linear-gradient(135deg, #0891b2 0%, #2563eb 100%); transition: 0.3s; font-weight: 900; }
+        .btn-glow { background: linear-gradient(135deg, #0891b2 0%, #2563eb 100%); transition: 0.3s; font-weight: 900; color: white; cursor: pointer; }
         .btn-glow:hover { transform: translateY(-2px); box-shadow: 0 5px 20px rgba(8, 145, 178, 0.4); }
         .hidden-step { display: none !important; }
     </style>
 </head>
 <body class="h-screen flex items-center justify-center p-4 bg-black">
 
-    <div id="site-login" class="w-full max-w-md glass p-10 rounded-[2.5rem] text-center border-t-4 border-cyan-500 shadow-2xl">
+    <div id="site-login" class="w-full max-w-md glass p-10 rounded-[2.5rem] text-center border-t-4 border-cyan-500">
         <div class="mb-8">
-            <h1 class="text-2xl font-black italic uppercase tracking-tighter">Expert <span class="text-cyan-400">Vision</span></h1>
-            <p class="text-[10px] text-slate-500 font-bold uppercase tracking-widest mt-2">Área do Cliente</p>
+            <h1 class="text-2xl font-black italic uppercase text-white">Expert <span class="text-cyan-400">Vision</span></h1>
+            <p class="text-[10px] text-slate-500 font-bold uppercase mt-2">Área de Acesso</p>
         </div>
-        <div class="space-y-4">
-            <input id="user-access" type="text" placeholder="Nome de Usuário" class="input-cyber w-full p-4 rounded-xl text-sm text-center">
-            <button onclick="fazerLoginSite()" class="btn-glow w-full py-4 rounded-xl uppercase text-xs tracking-widest text-white">Entrar no Sistema</button>
-        </div>
+        <input id="user-name" type="text" placeholder="Seu Nome de Usuário" class="input-cyber w-full p-4 mb-4 rounded-xl text-sm text-center">
+        <button onclick="entrarNoSite()" class="btn-glow w-full py-4 rounded-xl uppercase text-xs">Entrar no Sistema</button>
     </div>
 
-    <div id="main-dashboard" class="hidden-step w-full max-w-6xl grid grid-cols-12 gap-6 h-[90vh]">
+    <div id="dashboard" class="hidden-step w-full max-w-6xl grid grid-cols-12 gap-6 h-[90vh]">
         
         <aside class="col-span-12 lg:col-span-4 flex flex-col gap-4">
             <div class="glass p-8 rounded-[2rem] flex-1 flex flex-col gap-6 border-l-4 border-cyan-500">
-                <div class="flex items-center gap-4">
-                    <i class="fas fa-shield-alt text-cyan-400 text-xl"></i>
-                    <h3 class="text-sm font-black uppercase">Autenticação Deriv</h3>
-                </div>
-
                 <div class="space-y-4">
-                    <button onclick="solicitarAcessoDeriv()" class="w-full py-4 bg-white text-black rounded-xl font-black text-[10px] uppercase flex items-center justify-center gap-3 hover:bg-slate-200 transition">
-                        <img src="https://deriv.com/static/00742f9b1c7f99990b790d97034b1593/deriv-logo-c2.svg" class="w-16">
-                        Conectar via OAuth
-                    </button>
+                    <h3 class="text-xs font-black uppercase text-slate-400">Acesso à API</h3>
                     
+                    <div class="relative">
+                        <input id="manual-token" type="password" placeholder="Cole seu token PAT aqui..." 
+                               class="input-cyber w-full p-4 rounded-xl text-xs pr-12">
+                        <button onclick="conectarComTokenManual()" class="absolute right-3 top-3 text-cyan-500 hover:text-cyan-300">
+                            <i id="sync-icon" class="fas fa-sync-alt"></i>
+                        </button>
+                    </div>
+
                     <div class="p-4 bg-slate-950/80 rounded-xl border border-slate-800 flex items-center gap-3">
-                        <div id="led-status" class="w-2.5 h-2.5 rounded-full bg-red-600 shadow-[0_0_8px_red]"></div>
-                        <span id="label-status" class="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Aguardando Autorização</span>
+                        <div id="status-led" class="w-2.5 h-2.5 rounded-full bg-red-600 shadow-[0_0_8px_red]"></div>
+                        <span id="status-text" class="text-[9px] font-bold text-slate-500 uppercase">Aguardando Token...</span>
                     </div>
                 </div>
 
-                <button id="btn-play" disabled class="btn-glow w-full py-5 rounded-2xl uppercase text-sm mt-auto opacity-20 cursor-not-allowed text-white">
-                    <i class="fas fa-play mr-2"></i> Iniciar Algoritmo
+                <button id="btn-start" disabled class="btn-glow w-full py-5 rounded-2xl uppercase text-sm mt-auto opacity-20 cursor-not-allowed">
+                    Iniciar Algoritmo
                 </button>
             </div>
         </aside>
 
         <main class="col-span-12 lg:col-span-8 flex flex-col gap-4">
             <div class="grid grid-cols-3 gap-4">
-                <div class="glass p-6 rounded-[2rem] text-center border-b-2 border-cyan-500/30">
+                <div class="glass p-6 rounded-[2rem] text-center">
                     <p class="text-[9px] text-slate-500 font-bold uppercase">Saldo Atual</p>
-                    <h4 id="balance-display" class="text-3xl font-black text-white font-mono">$ 0.00</h4>
+                    <h4 id="balance" class="text-3xl font-black text-white font-mono">$ 0.00</h4>
                 </div>
             </div>
 
             <div class="glass p-8 rounded-[2.5rem] flex-1 flex flex-col overflow-hidden">
-                <div id="terminal-logs" class="flex-1 overflow-y-auto font-mono text-[11px] space-y-2 text-slate-400">
-                    <div class="text-cyan-500/50 italic">> Sistema Expert Vision pronto para operar.</div>
+                <div id="logs" class="flex-1 overflow-y-auto font-mono text-[11px] space-y-2 text-slate-400">
+                    <div class="text-cyan-500/50 italic">> Sistema manual pronto para receber token.</div>
                 </div>
             </div>
         </main>
     </div>
 
     <script>
-        // O SEU APP_ID CONFIGURADO NO PAINEL DA DERIV
-        const APP_ID = '33e1UPy4LXVMuK8F8PU3t';
+        const APP_ID = '33e1UPy4LXVMuK8F8PU3t'; // Seu App ID configurado
         let ws;
 
-        // 1. FUNÇÃO DE LOGIN NO SEU SITE
-        function fazerLoginSite() {
-            const user = document.getElementById('user-access').value;
-            if(!user) return alert("Por favor, digite seu usuário.");
-            
-            // Salva o estado de login no site para quando ele voltar da Deriv
-            sessionStorage.setItem('site_authed', 'true');
-            exibirDashboard();
-            addLog("Usuário identificado. Agora, realize o login seguro na Deriv.");
-        }
-
-        function exibirDashboard() {
+        function entrarNoSite() {
+            if(!document.getElementById('user-name').value) return alert("Identifique-se para continuar.");
             document.getElementById('site-login').classList.add('hidden-step');
-            document.getElementById('main-dashboard').classList.remove('hidden-step');
+            document.getElementById('dashboard').classList.remove('hidden-step');
         }
 
-        // 2. DISPARA O FLUXO OAUTH (IGUAL AO CLUB PLATINA)
-        function solicitarAcessoDeriv() {
-            // Esta URL abre a página de "Permitir Acesso" da Deriv usando seu App ID
-            const authUrl = `https://oauth.deriv.com/oauth2/authorize?app_id=${APP_ID}&l=PT&brand=deriv`;
-            window.location.href = authUrl;
-        }
+        function conectarComTokenManual() {
+            const token = document.getElementById('manual-token').value;
+            if(!token) return alert("Por favor, cole seu token.");
 
-        // 3. CAPTURA O RETORNO DA URL COM O TOKEN AUTOMÁTICO
-        window.onload = () => {
-            const query = new URLSearchParams(window.location.search);
-            const tokenRetornado = query.get('token1'); // A Deriv coloca o token aqui após o clique em "Permitir"
-            const jaLogouNoSite = sessionStorage.getItem('site_authed');
+            document.getElementById('sync-icon').classList.add('animate-spin');
+            addLog("Validando token manual...", "text-yellow-500");
 
-            if (tokenRetornado) {
-                // Se voltou da Deriv com o token, pula para o dashboard e conecta
-                exibirDashboard();
-                conectarDeriv(tokenRetornado);
-            } else if (jaLogouNoSite === 'true') {
-                // Se já logou no site mas ainda não tem o token da Deriv
-                exibirDashboard();
-            }
-        };
-
-        function conectarDeriv(token) {
-            addLog("Validando credenciais capturadas na Deriv...", "text-yellow-500");
             ws = new WebSocket(`wss://ws.binaryws.com/websockets/v3?app_id=${APP_ID}`);
             
             ws.onopen = () => ws.send(JSON.stringify({ authorize: token }));
@@ -125,35 +94,36 @@
                 const data = JSON.parse(msg.data);
                 
                 if (data.error) {
-                    addLog("FALHA: " + data.error.message, "text-red-500");
+                    addLog("ERRO: Token inválido ou expirado.", "text-red-500");
+                    document.getElementById('sync-icon').classList.remove('animate-spin');
                     return;
                 }
 
                 if (data.msg_type === 'authorize') {
-                    addLog("SISTEMA AUTORIZADO!", "text-green-400 font-bold");
+                    addLog("TOKEN VALIDADO COM SUCESSO!", "text-green-400 font-bold");
                     
-                    // Ajusta o Visual para Conectado
-                    document.getElementById('led-status').className = "w-2.5 h-2.5 rounded-full bg-green-500 shadow-[0_0_10px_#22c55e]";
-                    document.getElementById('label-status').innerText = data.authorize.is_virtual ? "CONTA DEMO ATIVA" : "CONTA REAL ATIVA";
-                    document.getElementById('label-status').className = "text-[9px] font-bold text-green-400 uppercase tracking-widest";
+                    // Ajuste Visual
+                    document.getElementById('status-led').className = "w-2.5 h-2.5 rounded-full bg-green-500 shadow-[0_0_10px_#22c55e]";
+                    document.getElementById('status-text').innerText = data.authorize.is_virtual ? "CONTA DEMO ATIVA" : "CONTA REAL ATIVA";
+                    document.getElementById('status-text').className = "text-[9px] font-bold text-green-400 uppercase";
                     
-                    const btn = document.getElementById('btn-play');
-                    btn.disabled = false;
-                    btn.classList.remove('opacity-20', 'cursor-not-allowed');
+                    document.getElementById('btn-start').disabled = false;
+                    document.getElementById('btn-start').classList.remove('opacity-20', 'cursor-not-allowed');
+                    document.getElementById('sync-icon').classList.remove('animate-spin');
                     
                     ws.send(JSON.stringify({ balance: 1, subscribe: 1 }));
                 }
 
                 if (data.msg_type === 'balance') {
-                    document.getElementById('balance-display').innerText = `$ ${data.balance.balance.toFixed(2)}`;
+                    document.getElementById('balance').innerText = `$ ${data.balance.balance.toFixed(2)}`;
                 }
             };
         }
 
         function addLog(msg, color = "text-slate-500") {
-            const logs = document.getElementById('terminal-logs');
+            const logs = document.getElementById('logs');
             const d = document.createElement('div');
-            d.className = color + " border-l border-slate-800 pl-3 py-1";
+            d.className = color + " border-l border-slate-800 pl-3";
             d.innerHTML = `[${new Date().toLocaleTimeString()}] ${msg}`;
             logs.prepend(d);
         }
