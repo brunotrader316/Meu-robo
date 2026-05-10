@@ -2,108 +2,91 @@
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
-    <title>Expert Vision | Ultra Terminal</title>
+    <title>Expert Vision Pro | Autenticação Oficial</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <style>
-        body { background: #020617; color: #f1f5f9; font-family: 'Inter', sans-serif; overflow: hidden; }
-        .glass { background: rgba(15, 23, 42, 0.7); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.05); }
-        .input-dark { background: #011627; border: 1px solid #1e3a5f; color: #22d3ee; padding: 12px; border-radius: 12px; width: 100%; outline: none; transition: 0.3s; }
-        .input-dark:focus { border-color: #06b6d4; box-shadow: 0 0 15px rgba(6, 182, 212, 0.2); }
-        .btn-run { background: linear-gradient(135deg, #0891b2 0%, #2563eb 100%); transition: 0.3s; font-weight: 900; }
-        .btn-run:hover { transform: translateY(-2px); box-shadow: 0 10px 20px rgba(8, 145, 178, 0.4); }
-        .log-box { height: 300px; font-family: 'Fira Code', monospace; font-size: 11px; scroll-behavior: smooth; }
-        ::-webkit-scrollbar { width: 4px; }
-        ::-webkit-scrollbar-thumb { background: #1e3a5f; border-radius: 10px; }
-    </style>
 </head>
-<body class="h-screen flex flex-col p-6">
+<body class="bg-[#020617] text-white flex items-center justify-center min-h-screen p-4 font-sans">
 
-    <header class="flex justify-between items-center mb-6">
-        <div class="flex items-center gap-4">
-            <div class="p-3 bg-cyan-500/10 rounded-2xl border border-cyan-500/20">
-                <i class="fas fa-microchip text-cyan-400 text-2xl"></i>
+    <div id="auth-card" class="bg-[#0f172a] p-10 rounded-3xl shadow-2xl w-full max-w-md border border-slate-800 text-center">
+        <div class="mb-8">
+            <div class="w-16 h-16 bg-cyan-500/20 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-cyan-500/30">
+                <i class="fas fa-shield-check text-cyan-400 text-3xl"></i>
             </div>
-            <div>
-                <h1 class="text-2xl font-black italic tracking-tighter uppercase">Expert <span class="text-cyan-400">Vision</span></h1>
-                <p class="text-[9px] text-slate-500 font-bold tracking-[0.2em]">ALGORITMO V3.5 PRO</p>
+            <h1 class="text-3xl font-black italic uppercase tracking-tighter">Expert <span class="text-cyan-400">Vision</span></h1>
+            <p class="text-[10px] text-slate-500 font-bold mt-2 uppercase tracking-widest font-mono">Terminal de Autenticação PKCE</p>
+        </div>
+
+        <button onclick="conectarDeriv()" class="w-full py-4 bg-cyan-600 hover:bg-cyan-500 rounded-xl font-bold uppercase transition-all flex items-center justify-center gap-3 shadow-lg shadow-cyan-900/20 border-b-4 border-cyan-700">
+            <i class="fab fa-buffer"></i> Login Seguro via Deriv
+        </button>
+
+        <div class="mt-8 pt-6 border-t border-slate-800">
+            <p class="text-[9px] text-slate-500 uppercase font-black mb-2 tracking-tighter text-left">Status da Conexão:</p>
+            <div class="flex items-center gap-2 text-left bg-slate-900/50 p-3 rounded-lg border border-slate-800">
+                <div id="led" class="w-2 h-2 rounded-full bg-red-500 animate-pulse"></div>
+                <span id="status-msg" class="text-[10px] font-mono text-slate-400 uppercase">Aguardando autorização...</span>
             </div>
         </div>
-        <div class="flex gap-6 items-center">
-            <div class="text-right">
-                <p id="status-label" class="text-[10px] font-bold text-red-500 uppercase tracking-widest">• Offline</p>
-                <h2 id="balance-val" class="text-3xl font-black font-mono">$ 0.00</h2>
-            </div>
-        </div>
-    </header>
+    </div>
 
-    <div class="grid grid-cols-12 gap-6 flex-1 overflow-hidden">
-        
-        <aside class="col-span-12 lg:col-span-4 space-y-4 overflow-y-auto pr-2">
-            <div class="glass p-6 rounded-3xl space-y-4">
-                <h3 class="text-xs font-black text-slate-400 uppercase flex items-center gap-2">
-                    <i class="fas fa-cogs text-cyan-400"></i> Parâmetros de Operação
-                </h3>
-                
-                <div>
-                    <label class="text-[10px] text-slate-500 font-bold uppercase ml-1">Estratégia Ativa</label>
-                    <select id="strategy" class="input-dark mt-1 text-sm bg-slate-950">
-                        <option value="diff">Dígitos Diferentes (Consistência)</option>
-                        <option value="match">Dígitos Iguais (Explosivo 9x)</option>
-                        <option value="over">Dígitos Over 2 (Tendência)</option>
-                    </select>
-                </div>
+    <script>
+        // Configurações Oficiais
+        const CLIENT_ID = '33e1UPy4LXVMuK8F8PU3t';
+        const REDIRECT_URI = 'https://brunotrader316.github.io/Meu-robo';
 
-                <div class="grid grid-cols-2 gap-4">
-                    <div>
-                        <label class="text-[10px] text-slate-500 font-bold uppercase ml-1">Entrada ($)</label>
-                        <input id="stake" type="number" value="0.35" step="0.01" class="input-dark mt-1">
-                    </div>
-                    <div>
-                        <label class="text-[10px] text-slate-500 font-bold uppercase ml-1">V-Loss (Espera)</label>
-                        <input id="v-limit" type="number" value="3" class="input-dark mt-1">
-                    </div>
-                </div>
+        async function gerarPKCE() {
+            const array = crypto.getRandomValues(new Uint8Array(64));
+            const verifier = Array.from(array)
+                .map(v => 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~'[v % 66])
+                .join('');
 
-                <button id="btn-master" onclick="startEngine()" class="btn-run w-full py-5 rounded-2xl uppercase text-sm mt-4">
-                    <i class="fas fa-play-circle mr-2"></i> Iniciar Operações
-                </button>
-            </div>
+            const hash = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(verifier));
+            const challenge = btoa(String.fromCharCode(...new Uint8Array(hash)))
+                .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 
-            <div class="glass p-6 rounded-3xl">
-                <h3 class="text-xs font-black text-slate-400 uppercase mb-4">Informação da Conta</h3>
-                <div class="flex items-center justify-between text-sm">
-                    <span class="text-slate-500">ID do App:</span>
-                    <span class="font-mono text-cyan-400">33e1UPy...</span>
-                </div>
-                <div class="flex items-center justify-between text-sm mt-2">
-                    <span class="text-slate-500">Token Status:</span>
-                    <span class="text-green-500 font-bold uppercase text-[10px]">Ativo & Validado</span>
-                </div>
-            </div>
-        </aside>
+            const state = Math.random().toString(36).substring(2);
 
-        <main class="col-span-12 lg:col-span-8 flex flex-col gap-4">
-            <div class="grid grid-cols-3 gap-4">
-                <div class="glass p-6 rounded-3xl text-center border-b-4 border-green-500/50">
-                    <p class="text-[10px] text-slate-500 font-bold uppercase">Wins</p>
-                    <h4 id="win-count" class="text-3xl font-black text-white">0</h4>
-                </div>
-                <div class="glass p-6 rounded-3xl text-center border-b-4 border-red-500/50">
-                    <p class="text-[10px] text-slate-500 font-bold uppercase">Losses</p>
-                    <h4 id="loss-count" class="text-3xl font-black text-white">0</h4>
-                </div>
-                <div class="glass p-6 rounded-3xl text-center border-b-4 border-cyan-500/50">
-                    <p class="text-[10px] text-slate-500 font-bold uppercase">Virtual Loss</p>
-                    <h4 id="v-display" class="text-3xl font-black text-cyan-400">0</h4>
-                </div>
-            </div>
+            sessionStorage.setItem('pkce_code_verifier', verifier);
+            sessionStorage.setItem('oauth_state', state);
 
-            <div class="glass p-6 rounded-3xl flex-1 flex flex-col overflow-hidden">
-                <div class="flex justify-between items-center mb-4">
-                    <h3 class="text-xs font-black text-slate-400 uppercase">Monitor de Ticks & Transações</h3>
-                    <span class="px-2 py-1 bg-cyan-500/10 text-cyan-400 text-[9px] font-bold rounded">LIVE FEED</span>
-                </div>
-                <div id="logs" class="log-box overflow-y-auto space-y-2">
-                    <div class="text-slate-600 italic">Pronto para processar dados via Token 33eu4HB...</div>
-                </div>
+            return { challenge, state };
+        }
+
+        async function conectarDeriv() {
+            const { challenge, state } = await gerarPKCE();
+            
+            // URL de autorização conforme o manual técnico OAuth 2.0
+            const authUrl = `https://auth.deriv.com/oauth2/auth?` + 
+                `response_type=code` +
+                `&client_id=${CLIENT_ID}` +
+                `&redirect_uri=${encodeURIComponent(REDIRECT_URI)}` +
+                `&scope=trade+account_manage+payments` +
+                `&state=${state}` +
+                `&code_challenge=${challenge}` +
+                `&code_challenge_method=S256`;
+            
+            window.location.href = authUrl;
+        }
+
+        window.onload = () => {
+            const params = new URLSearchParams(window.location.search);
+            const code = params.get('code');
+            const error = params.get('error');
+
+            if (error) {
+                document.getElementById('status-msg').innerText = "ERRO: " + params.get('error_description');
+                document.getElementById('status-msg').className = "text-[10px] font-mono text-red-500 uppercase";
+                document.getElementById('led').className = "w-2 h-2 rounded-full bg-red-600";
+            }
+
+            if (code) {
+                document.getElementById('status-msg').innerText = "CONECTADO! TROCANDO TOKEN...";
+                document.getElementById('status-msg').className = "text-[10px] font-mono text-cyan-400 uppercase";
+                document.getElementById('led').className = "w-2 h-2 rounded-full bg-cyan-400 animate-pulse";
+                // Aqui o sistema prossegue para carregar o seu robô Expert Vision
+            }
+        };
+    </script>
+</body>
+</html>
