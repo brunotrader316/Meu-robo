@@ -1,187 +1,291 @@
-const CLIENT_ID = '33ez5W6537WKkpVzEfRAo';
-const REDIRECT_URI = 'https://brunotrader316.github.io/Meu-robo/';
-let ws;
-let running = false;
-let vCounter = 0;
-let stakeOriginal = 0;
-let currentStake = 0;
-let accessToken = null;
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Expert Vision Pro | Deriv Intelligence</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body { background: #020617; color: #f1f5f9; font-family: 'Inter', sans-serif; overflow: hidden; }
+        .side-panel { background: #0f172a; border-right: 1px solid #1e293b; }
+        .stat-card { background: #1e293b; border: 1px solid #334155; border-radius: 12px; }
+        .input-dark { background: #020617; border: 1px solid #334155; color: #fff; padding: 10px; border-radius: 8px; width: 100%; outline: none; }
+        .input-dark:focus { border-color: #22d3ee; }
+        .btn-run { background: linear-gradient(to right, #06b6d4, #3b82f6); color: white; font-weight: 900; transition: 0.3s; }
+        .btn-run:hover { transform: scale(1.02); box-shadow: 0 0 20px rgba(6, 182, 212, 0.4); }
+        ::-webkit-scrollbar { width: 5px; }
+        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 10px; }
+    </style>
+</head>
+<body class="h-screen flex flex-col">
 
-// --- FUNÇÕES OAUTH 2.0 ---
-function generateCodeVerifier() {
-    const array = new Uint8Array(32);
-    crypto.getRandomValues(array);
-    return btoa(String.fromCharCode(...array)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
-}
+    <header class="h-16 bg-[#0f172a] border-b border-slate-800 flex items-center justify-between px-8">
+        <div class="flex items-center gap-3">
+            <div class="w-10 h-10 bg-cyan-500 rounded-lg flex items-center justify-center shadow-lg shadow-cyan-500/20">
+                <i class="fas fa-microchip text-slate-900 text-xl"></i>
+            </div>
+            <h1 class="text-xl font-black italic tracking-tighter">EXPERT <span class="text-cyan-400">VISION</span></h1>
+        </div>
+        <div class="flex items-center gap-8">
+            <div class="text-right">
+                <span id="acc-status" class="text-[10px] font-bold text-red-500 uppercase tracking-widest">• Desconectado</span>
+                <p id="balance-display" class="text-xl font-mono font-bold">$ 0.00</p>
+            </div>
+        </div>
+    </header>
 
-async function generateCodeChallenge(verifier) {
-    const encoder = new TextEncoder();
-    const data = encoder.encode(verifier);
-    const digest = await crypto.subtle.digest('SHA-256', data);
-    return btoa(String.fromCharCode(...new Uint8Array(digest))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
-}
+    <main class="flex-1 flex overflow-hidden">
+        <aside class="w-80 side-panel p-6 overflow-y-auto space-y-6">
+            <div class="space-y-4">
+                <h3 class="text-xs font-bold text-slate-500 uppercase">Autenticação</h3>
+                <button id="btn-login" onclick="iniciarLoginDeriv()" class="input-dark text-sm bg-slate-800 hover:bg-slate-700 text-cyan-400 border-cyan-500/50 flex items-center justify-center gap-2">
+                    <i class="fab fa-dyalog"></i> CONECTAR CONTA DERIV
+                </button>
+                <div id="user-info" class="hidden text-[10px] text-green-400 italic text-center">✓ Autenticado via OAuth</div>
+                
+                <h3 class="text-xs font-bold text-slate-500 uppercase pt-2">Estratégia DIF GALE</h3>
+                
+                <div>
+                    <label class="text-[10px] text-slate-400 uppercase">Mercado</label>
+                    <select id="market" class="input-dark mt-1 text-sm">
+                        <option value="1HZ100V" selected>Volatility 100 (1s)</option>
+                        <option value="1HZ10V">Volatility 10 (1s)</option>
+                        <option value="R_100">Volatility 100 Index</option>
+                    </select>
+                </div>
 
-async function iniciarLoginDeriv() {
-    const codeVerifier = generateCodeVerifier();
-    const codeChallenge = await generateCodeChallenge(codeVerifier);
-    const state = crypto.randomUUID();
-    sessionStorage.setItem('code_verifier', codeVerifier);
-    sessionStorage.setItem('oauth_state', state);
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="text-[10px] text-slate-400 uppercase">Entrada ($)</label>
+                        <input id="stake" type="number" value="0.35" class="input-dark">
+                    </div>
+                    <div>
+                        <label class="text-[10px] text-slate-400 uppercase">Dígito Alvo</label>
+                        <input id="prediction" type="number" value="9" max="9" min="0" class="input-dark">
+                    </div>
+                </div>
 
-    const authUrl = new URL('https://auth.deriv.com/oauth2/auth');
-    authUrl.searchParams.set('response_type', 'code');
-    authUrl.searchParams.set('client_id', CLIENT_ID);
-    authUrl.searchParams.set('redirect_uri', REDIRECT_URI);
-    authUrl.searchParams.set('scope', 'trade account_read');
-    authUrl.searchParams.set('state', state);
-    authUrl.searchParams.set('code_challenge', codeChallenge);
-    authUrl.searchParams.set('code_challenge_method', 'S256');
-    window.location.href = authUrl.toString();
-}
+                <div>
+                    <label class="text-[10px] text-slate-400 uppercase">V-Loss (Sequência)</label>
+                    <input id="v-loss-limit" type="number" value="3" class="input-dark border-cyan-500/30">
+                </div>
 
-// --- FLUXO DE TRADING ---
-async function verificarRetornoLogin() {
-    const urlParams = new URLSearchParams(window.location.search);
-    const code = urlParams.get('code');
-    const state = urlParams.get('state');
+                <div class="pt-4">
+                    <button id="btn-action" onclick="toggleBot()" class="w-full py-4 rounded-xl btn-run uppercase text-sm">
+                        <i class="fas fa-play mr-2"></i> Iniciar Robô
+                    </button>
+                </div>
+            </div>
+        </aside>
 
-    if (code && state === sessionStorage.getItem('oauth_state')) {
-        log("Trocando código de autorização...", "text-cyan-400");
-        const verifier = sessionStorage.getItem('code_verifier');
-        
-        try {
-            const resp = await fetch('https://auth.deriv.com/oauth2/token', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                body: new URLSearchParams({
-                    grant_type: 'authorization_code', client_id: CLIENT_ID,
-                    code: code, redirect_uri: REDIRECT_URI, code_verifier: verifier
-                })
+        <section class="flex-1 p-6 flex flex-col gap-6 overflow-hidden">
+            <div class="flex-[2] stat-card overflow-hidden relative">
+                <div id="tradingview_chart" class="h-full w-full"></div>
+            </div>
+
+            <div class="flex-1 flex gap-6">
+                <div class="w-64 flex flex-col gap-3">
+                    <div class="stat-card p-4 flex justify-between items-center">
+                        <span class="text-xs text-slate-400 uppercase">Wins</span>
+                        <span id="wins" class="text-xl font-bold text-green-400">0</span>
+                    </div>
+                    <div class="stat-card p-4 flex justify-between items-center">
+                        <span class="text-xs text-slate-400 uppercase">Losses</span>
+                        <span id="losses" class="text-xl font-bold text-red-400">0</span>
+                    </div>
+                    <div class="stat-card p-4 flex flex-col items-center justify-center bg-cyan-950/20">
+                        <span id="v-counter" class="text-3xl font-black text-white">0</span>
+                        <span class="text-[10px] text-cyan-400 uppercase font-bold">Contador V-Loss</span>
+                    </div>
+                </div>
+
+                <div class="flex-1 stat-card p-4 flex flex-col">
+                    <h4 class="text-[10px] font-bold text-slate-500 uppercase mb-2 border-b border-slate-700 pb-1">Relatório de Execução</h4>
+                    <div id="logs" class="flex-1 overflow-y-auto text-[11px] font-mono space-y-1"></div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <script src="https://s3.tradingview.com/tv.js"></script>
+    
+    <script>
+        const CLIENT_ID = '33ez5W6537WKkpVzEfRAo';
+        const REDIRECT_URI = 'https://brunotrader316.github.io/Meu-robo/';
+        let ws;
+        let running = false;
+        let vCounter = 0;
+        let stakeOriginal = 0;
+        let currentStake = 0;
+        let accessToken = null;
+
+        // --- PKCE HELPERS ---
+        function generateCodeVerifier() {
+            const array = new Uint8Array(32);
+            crypto.getRandomValues(array);
+            return btoa(String.fromCharCode(...array)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+        }
+
+        async function generateCodeChallenge(verifier) {
+            const encoder = new TextEncoder();
+            const data = encoder.encode(verifier);
+            const digest = await crypto.subtle.digest('SHA-256', data);
+            return btoa(String.fromCharCode(...new Uint8Array(digest))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+        }
+
+        // --- AUTH FLOW ---
+        async function iniciarLoginDeriv() {
+            const codeVerifier = generateCodeVerifier();
+            const codeChallenge = await generateCodeChallenge(codeVerifier);
+            const state = crypto.randomUUID();
+            sessionStorage.setItem('code_verifier', codeVerifier);
+            sessionStorage.setItem('oauth_state', state);
+
+            const authUrl = new URL('https://auth.deriv.com/oauth2/auth');
+            authUrl.searchParams.set('response_type', 'code');
+            authUrl.searchParams.set('client_id', CLIENT_ID);
+            authUrl.searchParams.set('redirect_uri', REDIRECT_URI);
+            authUrl.searchParams.set('scope', 'trade account_read');
+            authUrl.searchParams.set('state', state);
+            authUrl.searchParams.set('code_challenge', codeChallenge);
+            authUrl.searchParams.set('code_challenge_method', 'S256');
+            window.location.href = authUrl.toString();
+        }
+
+        async function verificarRetornoLogin() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const code = urlParams.get('code');
+            const state = urlParams.get('state');
+
+            if (code && state === sessionStorage.getItem('oauth_state')) {
+                log("Autenticando na Deriv...", "text-cyan-400");
+                const verifier = sessionStorage.getItem('code_verifier');
+                
+                try {
+                    const resp = await fetch('https://auth.deriv.com/oauth2/token', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                        body: new URLSearchParams({
+                            grant_type: 'authorization_code', client_id: CLIENT_ID,
+                            code: code, redirect_uri: REDIRECT_URI, code_verifier: verifier
+                        })
+                    });
+                    const data = await resp.json();
+                    if (data.access_token) {
+                        accessToken = data.access_token;
+                        document.getElementById('btn-login').classList.add('hidden');
+                        document.getElementById('user-info').classList.remove('hidden');
+                        window.history.replaceState({}, document.title, window.location.pathname);
+                        conectarWS();
+                    }
+                } catch (e) { log("Erro no Token", "text-red-500"); }
+            }
+        }
+
+        // --- WEBSOCKET & TRADING ---
+        function conectarWS() {
+            ws = new WebSocket(`wss://ws.binaryws.com/websockets/v3?app_id=${CLIENT_ID}`);
+            ws.onopen = () => ws.send(JSON.stringify({ authorize: accessToken }));
+            
+            ws.onmessage = (msg) => {
+                const data = JSON.parse(msg.data);
+                if (data.error) return log("ERRO: " + data.error.message, "text-red-500");
+
+                if (data.msg_type === 'authorize') {
+                    document.getElementById('acc-status').innerText = data.authorize.is_virtual ? "• CONTA DEMO" : "• CONTA REAL";
+                    document.getElementById('acc-status').style.color = data.authorize.is_virtual ? "#22c55e" : "#f97316";
+                    ws.send(JSON.stringify({ balance: 1, subscribe: 1 }));
+                    log("Conectado! Pronto para operar.", "text-green-400");
+                }
+
+                if (data.msg_type === 'balance') {
+                    document.getElementById('balance-display').innerText = `$ ${data.balance.balance.toFixed(2)}`;
+                }
+
+                if (data.msg_type === 'tick' && running) {
+                    processarTick(data.tick);
+                }
+
+                if (data.msg_type === 'proposal_open_contract' && data.proposal_open_contract.is_settled) {
+                    tratarResultado(data.proposal_open_contract);
+                }
+            };
+        }
+
+        function processarTick(tick) {
+            const digit = tick.quote.toString().slice(-1);
+            const target = document.getElementById('prediction').value;
+            const limit = document.getElementById('v-loss-limit').value;
+
+            if (digit == target) {
+                vCounter++;
+                document.getElementById('v-counter').innerText = vCounter;
+                log(`V-Loss: Dígito ${digit} encontrado (${vCounter}/${limit})`, "text-orange-400");
+            }
+
+            if (vCounter >= limit) {
+                vCounter = 0;
+                document.getElementById('v-counter').innerText = "0";
+                executarOrdem();
+            }
+        }
+
+        function executarOrdem() {
+            log(`ENTRADA REAL: DIFERENTE DE ${document.getElementById('prediction').value}`, "text-white bg-blue-600 px-2");
+            ws.send(JSON.stringify({
+                "buy": 1, "price": currentStake * 1.5,
+                "parameters": {
+                    "amount": currentStake, "basis": "stake", "contract_type": "DIGITDIFF",
+                    "currency": "USD", "duration": 1, "duration_unit": "t",
+                    "symbol": document.getElementById('market').value,
+                    "barrier": document.getElementById('prediction').value
+                },
+                "subscribe": 1
+            }));
+        }
+
+        function tratarResultado(contract) {
+            if (contract.status === 'won') {
+                document.getElementById('wins').innerText = parseInt(document.getElementById('wins').innerText) + 1;
+                currentStake = stakeOriginal;
+                log("WIN! Voltando ao stake inicial.", "text-green-400 font-bold");
+            } else {
+                document.getElementById('losses').innerText = parseInt(document.getElementById('losses').innerText) + 1;
+                currentStake = currentStake * 11;
+                log(`LOSS! Aplicando Gale: $${currentStake.toFixed(2)}`, "text-red-400 font-bold");
+            }
+        }
+
+        function toggleBot() {
+            if (!accessToken) return alert("Clique em 'CONECTAR CONTA' primeiro!");
+            running = !running;
+            if (running) {
+                ws.send(JSON.stringify({ ticks: document.getElementById('market').value, subscribe: 1 }));
+                stakeOriginal = parseFloat(document.getElementById('stake').value);
+                currentStake = stakeOriginal;
+                document.getElementById('btn-action').innerHTML = '<i class="fas fa-stop mr-2"></i> Parar Robô';
+                document.getElementById('btn-action').classList.replace('btn-run', 'bg-red-600');
+                log("Robô em execução...", "text-yellow-400");
+            } else {
+                location.reload();
+            }
+        }
+
+        function log(msg, colorClass) {
+            const l = document.getElementById('logs');
+            const d = document.createElement('div');
+            d.className = `border-b border-slate-800 pb-1 ${colorClass}`;
+            d.innerHTML = `[${new Date().toLocaleTimeString()}] ${msg}`;
+            l.prepend(d);
+        }
+
+        window.onload = () => {
+            verificarRetornoLogin();
+            new TradingView.widget({
+                "autosize": true, "symbol": "DERIV:VOLATILITY_100_INDEX",
+                "interval": "1", "theme": "dark", "container_id": "tradingview_chart"
             });
-            const data = await resp.json();
-            if (data.access_token) {
-                accessToken = data.access_token;
-                document.getElementById('btn-login').classList.add('hidden');
-                document.getElementById('user-info').classList.remove('hidden');
-                window.history.replaceState({}, document.title, window.location.pathname);
-                log("Conexão OAuth estabelecida!", "text-green-400");
-                iniciarWebSocket();
-            }
-        } catch (e) { log("Erro na troca de token", "text-red-500"); }
-    }
-}
-
-async function iniciarWebSocket() {
-    // Busca o OTP para URL segura conforme exigido pelo fluxo de trabalho
-    try {
-        const otpResp = await fetch(`https://api.derivws.com/trading/v1/options/accounts/YOUR_ACCOUNT_ID/otp`, {
-            method: 'POST',
-            headers: { 'Authorization': `Bearer ${accessToken}`, 'Deriv-App-ID': CLIENT_ID }
-        });
-        // Nota: Para fins de simplicidade e teste imediato no GitHub Pages, 
-        // vamos usar a conexão direta authorize caso o endpoint OTP exija AccountID dinâmico.
-        
-        ws = new WebSocket(`wss://ws.binaryws.com/websockets/v3?app_id=${CLIENT_ID}`);
-        
-        ws.onopen = () => ws.send(JSON.stringify({ authorize: accessToken }));
-
-        ws.onmessage = (msg) => {
-            const data = JSON.parse(msg.data);
-            if (data.error) return log("ERRO: " + data.error.message, "text-red-500");
-
-            if (data.msg_type === 'authorize') {
-                document.getElementById('acc-status').innerText = data.authorize.is_virtual ? "• CONTA DEMO" : "• CONTA REAL";
-                ws.send(JSON.stringify({ balance: 1, subscribe: 1 }));
-                log("Sistema pronto para operar.", "text-cyan-400");
-            }
-
-            if (data.msg_type === 'balance') {
-                document.getElementById('balance-display').innerText = `$ ${data.balance.balance.toFixed(2)}`;
-            }
-
-            if (data.msg_type === 'tick' && running) {
-                processarTick(data.tick);
-            }
-
-            if (data.msg_type === 'proposal_open_contract' && data.proposal_open_contract.is_settled) {
-                tratarResultado(data.proposal_open_contract);
-            }
         };
-    } catch (e) { log("Falha ao iniciar conexão", "text-red-500"); }
-}
-
-function toggleBot() {
-    if (!accessToken) return alert("Conecte sua conta primeiro!");
-    running = !running;
-    if (running) {
-        ws.send(JSON.stringify({ ticks: document.getElementById('market').value, subscribe: 1 }));
-        stakeOriginal = parseFloat(document.getElementById('stake').value);
-        currentStake = stakeOriginal;
-        document.getElementById('btn-action').innerHTML = '<i class="fas fa-stop mr-2"></i> Parar Robô';
-        document.getElementById('btn-action').className = "w-full py-4 rounded-xl bg-red-600 text-white uppercase text-sm font-bold";
-        log("Estratégia DIF GALE Iniciada...", "text-yellow-400");
-    } else {
-        location.reload();
-    }
-}
-
-function processarTick(tick) {
-    const digit = tick.quote.toString().slice(-1);
-    const target = document.getElementById('prediction').value;
-    const limit = document.getElementById('v-loss-limit').value;
-
-    if (digit == target) {
-        vCounter++;
-        document.getElementById('v-counter').innerText = vCounter;
-    }
-
-    if (vCounter >= limit) {
-        executarOrdem();
-        vCounter = 0;
-        document.getElementById('v-counter').innerText = "0";
-    }
-}
-
-function executarOrdem() {
-    ws.send(JSON.stringify({
-        "buy": 1, "price": currentStake * 1.5, // Buffer de preço
-        "parameters": {
-            "amount": currentStake, "basis": "stake", "contract_type": "DIGITDIFF",
-            "currency": "USD", "duration": 1, "duration_unit": "t",
-            "symbol": document.getElementById('market').value,
-            "barrier": document.getElementById('prediction').value
-        },
-        "subscribe": 1 // Para monitorar o resultado automaticamente
-    }));
-    log(`Entrada enviada: $${currentStake}`, "text-white");
-}
-
-function tratarResultado(contract) {
-    const win = contract.status === 'won';
-    if (win) {
-        document.getElementById('wins').innerText = parseInt(document.getElementById('wins').innerText) + 1;
-        currentStake = stakeOriginal;
-        log("WIN!", "text-green-400 font-bold");
-    } else {
-        document.getElementById('losses').innerText = parseInt(document.getElementById('losses').innerText) + 1;
-        currentStake = currentStake * 11;
-        log(`LOSS! Novo Gale: $${currentStake.toFixed(2)}`, "text-red-400");
-    }
-}
-
-function log(msg, colorClass) {
-    const l = document.getElementById('logs');
-    const d = document.createElement('div');
-    d.className = `border-b border-slate-800 pb-1 ${colorClass}`;
-    d.innerHTML = `[${new Date().toLocaleTimeString()}] ${msg}`;
-    l.prepend(d);
-}
-
-// Inicialização
-window.onload = () => {
-    verificarRetornoLogin();
-    new TradingView.widget({
-        "autosize": true, "symbol": "DERIV:VOLATILITY_100_INDEX",
-        "interval": "1", "theme": "dark", "container_id": "tradingview_chart"
-    });
-};
+    </script>
+</body>
+</html>
