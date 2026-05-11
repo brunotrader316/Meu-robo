@@ -2,11 +2,12 @@
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Expert Vision Pro | Deriv Intelligence</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        body { background: #020617; color: #f1f5f9; font-family: 'Inter', sans-serif; overflow-x: hidden; }
+        body { background: #020617; color: #f1f5f9; font-family: 'Inter', sans-serif; }
         .side-panel { background: #0f172a; border-right: 1px solid #1e293b; }
         .stat-card { background: #1e293b; border: 1px solid #334155; border-radius: 12px; }
         .input-dark { background: #020617; border: 1px solid #334155; color: #fff; padding: 10px; border-radius: 8px; width: 100%; outline: none; }
@@ -30,14 +31,12 @@
 
     <main class="flex-1 flex overflow-hidden">
         <aside class="w-80 side-panel p-6 space-y-6">
-            <h3 class="text-xs font-bold text-slate-500 uppercase">Autenticação</h3>
             <button id="btn-login" onclick="iniciarLoginDeriv()" class="input-dark text-sm bg-slate-800 hover:bg-slate-700 text-cyan-400 border-cyan-500/50 flex items-center justify-center gap-2">
                 <i class="fab fa-dyalog"></i> CONECTAR DERIV
             </button>
             <div id="user-info" class="hidden text-[10px] text-green-400 italic text-center">✓ Autenticado</div>
             
             <div class="space-y-4">
-                <label class="text-[10px] text-slate-400 uppercase">Mercado</label>
                 <select id="market" class="input-dark text-sm">
                     <option value="1HZ100V" selected>Volatility 100 (1s)</option>
                     <option value="R_100">Volatility 100 Index</option>
@@ -54,25 +53,20 @@
         <section class="flex-1 p-6 flex flex-col gap-6">
             <div id="tradingview_chart" class="flex-[2] stat-card overflow-hidden"></div>
             <div class="flex-1 flex gap-6">
-                <div class="w-48 space-y-3">
-                    <div class="stat-card p-3 flex justify-between"><span class="text-xs">Wins</span><span id="wins" class="text-green-400 font-bold">0</span></div>
-                    <div class="stat-card p-3 flex justify-between"><span class="text-xs">Losses</span><span id="losses" class="text-red-400 font-bold">0</span></div>
-                    <div class="stat-card p-3 text-center"><span class="text-[10px] uppercase">V-Loss</span><p id="v-counter" class="text-2xl font-black">0</p></div>
-                </div>
-                <div class="flex-1 stat-card p-4 overflow-y-auto text-[11px] font-mono" id="logs"></div>
+                <div id="logs" class="flex-1 stat-card p-4 overflow-y-auto text-[11px] font-mono"></div>
             </div>
         </section>
     </main>
 
     <script src="https://s3.tradingview.com/tv.js"></script>
     <script>
-        // CONFIGURAÇÕES EXATAS DO SEU PAINEL
+        // ATENÇÃO: Substitua pelo seu link da Vercel após o deploy
         const CLIENT_ID = '33ez5W6537WKkpVzEfRAo';
-        const REDIRECT_URI = 'https://brunotrader316.github.io/Meu-robo'; // Sem barra final
+        const REDIRECT_URI = window.location.origin; 
         
-        let ws, running = false, vCounter = 0, currentStake = 0, accessToken = null;
+        let ws, running = false, vCounter = 0, currentStake = 0, authenticated = false;
 
-        function log(msg, color) {
+        function log(msg, color = "text-slate-400") {
             const div = document.createElement('div');
             div.className = color;
             div.innerHTML = `[${new Date().toLocaleTimeString()}] ${msg}`;
@@ -84,8 +78,7 @@
             const challenge = btoa(String.fromCharCode(...new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(verifier))))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
             sessionStorage.setItem('code_verifier', verifier);
             
-            // ESCOPO REDUZIDO PARA EVITAR ERRO 401/INVALID_SCOPE
-            const authUrl = `https://auth.deriv.com/oauth2/auth?response_type=code&client_id=${CLIENT_ID}&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&scope=trade+read&code_challenge=${challenge}&code_challenge_method=S256`;
+            const authUrl = `https://auth.deriv.com/oauth2/auth?response_type=code&client_id=${CLIENT_ID}&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&scope=trade&code_challenge=${challenge}&code_challenge_method=S256`;
             window.location.href = authUrl;
         }
 
@@ -93,88 +86,72 @@
             const params = new URLSearchParams(window.location.search);
             const code = params.get('code');
             if (code) {
-                log("Trocando código por acesso...", "text-cyan-400");
+                log("Backend processando OTP...", "text-cyan-400");
                 try {
-                    const resp = await fetch('https://auth.deriv.com/oauth2/token', {
+                    // Chamada para a sua função na Vercel
+                    const resp = await fetch('/api/auth', {
                         method: 'POST',
-                        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                        body: new URLSearchParams({
-                            grant_type: 'authorization_code',
-                            client_id: CLIENT_ID,
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
                             code: code,
-                            redirect_uri: REDIRECT_URI,
-                            code_verifier: sessionStorage.getItem('code_verifier')
+                            verifier: sessionStorage.getItem('code_verifier'),
+                            clientId: CLIENT_ID,
+                            redirectUri: REDIRECT_URI
                         })
                     });
                     const data = await resp.json();
-                    if (data.access_token) {
-                        accessToken = data.access_token;
-                        document.getElementById('btn-login').style.display = 'none';
-                        document.getElementById('user-info').classList.remove('hidden');
+                    if (data.url) {
                         window.history.replaceState({}, '', window.location.pathname);
-                        conectar();
+                        conectarWebSocket(data.url);
                     }
-                } catch (e) { log("Erro na autenticação.", "text-red-500"); }
+                } catch (e) { log("Erro no servidor de autenticação.", "text-red-500"); }
             }
         }
 
-        function conectar() {
-            // Usando o WebSocket padrão pois o OTP exige Backend
-            ws = new WebSocket(`wss://ws.binaryws.com/websockets/v3?app_id=${CLIENT_ID}`);
-            ws.onopen = () => ws.send(JSON.stringify({ authorize: accessToken }));
-            ws.onmessage = (msg) => {
-                const d = JSON.parse(msg.data);
-                if (d.msg_type === 'authorize') {
-                    document.getElementById('acc-status').innerText = d.authorize.is_virtual ? "• DEMO" : "• REAL";
-                    ws.send(JSON.stringify({ balance: 1, subscribe: 1 }));
-                    log("Conectado com sucesso!", "text-green-400");
-                }
+        function conectarWebSocket(otpUrl) {
+            ws = new WebSocket(otpUrl);
+            ws.onopen = () => {
+                authenticated = true;
+                document.getElementById('btn-login').style.display = 'none';
+                document.getElementById('user-info').classList.remove('hidden');
+                document.getElementById('acc-status').innerText = "• CONECTADO";
+                document.getElementById('acc-status').className = "text-[10px] font-bold text-green-500 uppercase tracking-widest";
+                ws.send(JSON.stringify({ balance: 1, subscribe: 1 }));
+                log("Conectado via OTP!", "text-green-400");
+            };
+            ws.onmessage = (e) => {
+                const d = JSON.parse(e.data);
                 if (d.msg_type === 'balance') document.getElementById('balance-display').innerText = `$ ${d.balance.balance.toFixed(2)}`;
                 if (d.msg_type === 'tick' && running) {
                     const digit = d.tick.quote.toString().slice(-1);
                     if (digit == document.getElementById('prediction').value) {
                         vCounter++;
-                        document.getElementById('v-counter').innerText = vCounter;
-                    }
-                    if (vCounter >= document.getElementById('v-loss-limit').value) {
-                        vCounter = 0;
-                        document.getElementById('v-counter').innerText = "0";
-                        executarCompra();
+                        if (vCounter >= document.getElementById('v-loss-limit').value) {
+                            vCounter = 0;
+                            comprar();
+                        }
                     }
                 }
-                if (d.msg_type === 'proposal_open_contract' && d.proposal_open_contract.is_settled) {
-                    const status = d.proposal_open_contract.status;
-                    if (status === 'won') {
-                        document.getElementById('wins').innerText = ++document.getElementById('wins').innerText;
-                        currentStake = parseFloat(document.getElementById('stake').value);
-                    } else {
-                        document.getElementById('losses').innerText = ++document.getElementById('losses').innerText;
-                        currentStake *= 11;
-                    }
-                }
+                if (d.msg_type === 'proposal') ws.send(JSON.stringify({ buy: d.proposal.id, price: d.proposal.ask_price }));
             };
         }
 
-        function executarCompra() {
+        function comprar() {
             ws.send(JSON.stringify({
-                buy: 1, price: currentStake * 1.5,
-                parameters: {
-                    amount: currentStake, basis: 'stake', contract_type: 'DIGITDIFF',
-                    currency: 'USD', duration: 1, duration_unit: 't',
-                    symbol: document.getElementById('market').value,
-                    barrier: document.getElementById('prediction').value
-                },
-                subscribe: 1
+                proposal: 1, amount: currentStake, basis: 'stake',
+                contract_type: 'DIGITDIFF', currency: 'USD', duration: 1,
+                duration_unit: 't', underlying_symbol: document.getElementById('market').value,
+                barrier: document.getElementById('prediction').value
             }));
         }
 
         function toggleBot() {
-            if (!accessToken) return alert("Conecte-se primeiro!");
+            if (!authenticated) return alert("Conecte a conta primeiro!");
             running = !running;
+            currentStake = parseFloat(document.getElementById('stake').value);
             if (running) {
-                currentStake = parseFloat(document.getElementById('stake').value);
                 ws.send(JSON.stringify({ ticks: document.getElementById('market').value, subscribe: 1 }));
-                document.getElementById('btn-action').innerText = "PARAR ROBÔ";
+                document.getElementById('btn-action').innerText = "PARAR";
                 document.getElementById('btn-action').style.background = "red";
             } else location.reload();
         }
