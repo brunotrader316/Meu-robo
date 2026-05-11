@@ -1,174 +1,61 @@
 /**
- * EXPERT VISION - TRADING TERMINAL
- * Versão Consolidada: Blocos 1 ao 10
+ * ORGANIZAÇÃO FINAL DO ROBÔ - brunotrader316.github.io
  */
 
-const EXPERT_VISION = {
-    // --- BLOCO 1 & 7: CONFIGURAÇÕES ---
-    config: {
-        CLIENT_ID: '33eu4HBakeGnrJSiITpaR',
-        REDIRECT_URI: 'https://brunotrader316.github.io/Meu-robo',
-        API_BASE: 'https://api.derivws.com',
-        AUTH_BASE: 'https://auth.deriv.com/oauth2',
-        PUBLIC_WS: 'wss://ws.binaryws.com/websockets/v3?app_id=33eu4HBakeGnrJSiITpaR',
-        
-        accessToken: null,
-        accountId: null,
-        currentProposalId: null
-    },
+// 1. Variáveis Globais de Configuração
+const CLIENT_ID = '33ez5W6537WKkpVzEfRAo';
+const REDIRECT_URI = 'https://brunotrader316.github.io/Meu-robo/';
+let socket = null;
+let activeProposalId = null;
 
-    socket: null,
+// 2. Lógica de Autenticação (OAuth 2.0 + PKCE)
+// [Aqui você coloca as funções generateCodeVerifier, generateCodeChallenge e iniciarLoginDeriv]
 
-    // --- BLOCO 7: UTILITÁRIOS CRIPTOGRÁFICOS PKCE ---
-    pkce: {
-        generateVerifier() {
-            const array = new Uint8Array(32);
-            crypto.getRandomValues(array);
-            return btoa(String.fromCharCode(...array)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
-        },
-        async generateChallenge(verifier) {
-            const encoder = new TextEncoder();
-            const data = encoder.encode(verifier);
-            const digest = await crypto.subtle.digest('SHA-256', data);
-            return btoa(String.fromCharCode(...new Uint8Array(digest))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
-        }
-    },
-
-    // --- FASE DE CONEXÃO E AUTENTICAÇÃO (BLOCOS 7 & 8) ---
-    async iniciarLogin() {
-        const verifier = this.pkce.generateVerifier();
-        const challenge = await this.pkce.generateChallenge(verifier);
-        const state = crypto.randomUUID();
-
-        sessionStorage.setItem('code_verifier', verifier);
-        sessionStorage.setItem('oauth_state', state);
-
-        const authUrl = new URL(`${this.config.AUTH_BASE}/auth`);
-        authUrl.searchParams.set('response_type', 'code');
-        authUrl.searchParams.set('client_id', this.config.CLIENT_ID);
-        authUrl.searchParams.set('redirect_uri', this.config.REDIRECT_URI);
-        authUrl.searchParams.set('scope', 'read trade account_manage payments');
-        authUrl.searchParams.set('state', state);
-        authUrl.searchParams.set('code_challenge', challenge);
-        authUrl.searchParams.set('code_challenge_method', 'S256');
-
-        window.location.href = authUrl.toString();
-    },
-
-    async processarRetornoCallback() {
-        const params = new URLSearchParams(window.location.search);
-        const code = params.get('code');
-        const state = params.get('state');
-        const savedState = sessionStorage.getItem('oauth_state');
-
-        if (code && state === savedState) {
-            const verifier = sessionStorage.getItem('code_verifier');
-            try {
-                // Troca de Token (Bloco 7)
-                const response = await fetch(`${this.config.AUTH_BASE}/token`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                    body: new URLSearchParams({
-                        grant_type: 'authorization_code',
-                        client_id: this.config.CLIENT_ID,
-                        code: code,
-                        redirect_uri: this.config.REDIRECT_URI,
-                        code_verifier: verifier
-                    })
-                });
-                const data = await response.json();
-                this.config.accessToken = data.access_token;
-                
-                // Descoberta de Conta (Bloco 6)
-                await this.identificarContaPrincipal();
-            } catch (err) { console.error("Erro na autenticação:", err); }
-        } else {
-            // Se não houver código, inicia dados públicos (Bloco 10)
-            this.conectarDadosPublicos();
-        }
-    },
-
-    // --- FASE ANALÍTICA (BLOCO 10) ---
-    conectarDadosPublicos() {
-        this.socket = new WebSocket(this.config.PUBLIC_WS);
-        this.socket.onopen = () => {
-            console.log("✓ Modo Analítico: Dados Públicos Conectados");
-            this.enviar({ active_symbols: "brief", req_id: 1 });
-            this.enviar({ ticks_history: "1HZ100V", count: 100, end: "latest", style: "ticks", req_id: 3 });
-        };
-        this.socket.onmessage = (msg) => this.gerenciarMensagem(JSON.parse(msg.data));
-    },
-
-    // --- FASE OPERACIONAL (BLOCOS 2, 8 & 9) ---
-    async identificarContaPrincipal() {
-        const res = await fetch(`${this.config.API_BASE}/trading/v1/options/accounts`, {
-            method: 'GET',
-            headers: { 'Authorization': `Bearer ${this.config.accessToken}`, 'Deriv-App-ID': this.config.CLIENT_ID }
-        });
-        const accounts = await res.json();
-        if (accounts.data?.length > 0) {
-            this.config.accountId = accounts.data[0].account_id;
-            await this.conectarTradingReal();
-        }
-    },
-
-    async conectarTradingReal() {
-        // Solicitação de OTP (Bloco 2 & 8)
-        const otpRes = await fetch(`${this.config.API_BASE}/trading/v1/options/accounts/${this.config.accountId}/otp`, {
-            method: 'POST',
-            headers: { 'Authorization': `Bearer ${this.config.accessToken}`, 'Deriv-App-ID': this.config.CLIENT_ID }
-        });
-        const otpData = await otpRes.json();
-        
-        // WebSocket Autenticado (Bloco 3, 5 & 8)
-        this.socket = new WebSocket(otpData.data.url);
-        this.socket.onopen = () => {
-            console.log("✓ MODO OPERACIONAL ATIVO: Conta " + this.config.accountId);
-            this.enviar({ balance: 1, subscribe: 1, req_id: 10 });
-            this.enviar({ ticks: "1HZ100V", subscribe: 1, req_id: 20 });
-            this.solicitarProposta("1HZ100V", 10);
-        };
-        this.socket.onmessage = (msg) => this.gerenciarMensagem(JSON.parse(msg.data));
-    },
-
-    // --- LOGICA DE TRADING (BLOCO 4 & 9) ---
-    solicitarProposta(simbolo, valor) {
-        this.enviar({
-            proposal: 1, amount: valor, basis: "stake", contract_type: "MULTDOWN",
-            currency: "USD", duration_unit: "s", multiplier: 10,
-            underlying_symbol: simbolo, subscribe: 1, req_id: 50
-        });
-    },
-
-    executarCompra() {
-        if (this.config.currentProposalId) {
-            this.enviar({ buy: this.config.currentProposalId, price: 100, req_id: 60 });
-        }
-    },
-
-    // --- CENTRAL DE MENSAGENS ---
-    gerenciarMensagem(data) {
-        switch (data.msg_type) {
-            case 'history': console.log("Análise de Histórico Carregada (Bloco 10)"); break;
-            case 'tick': document.dispatchEvent(new CustomEvent('tick_update', { detail: data.tick })); break;
-            case 'balance': console.log("Saldo Atualizado:", data.balance.balance); break;
-            case 'proposal': this.config.currentProposalId = data.proposal.id; break;
-            case 'buy': 
-                console.log("Compra Confirmada!");
-                this.enviar({ proposal_open_contract: 1, contract_id: data.buy.contract_id, subscribe: 1, req_id: 70 });
-                break;
-        }
-        console.log("Recebido:", data.msg_type, data);
-    },
-
-    enviar(obj) {
-        if (this.socket && this.socket.readyState === WebSocket.OPEN) {
-            this.socket.send(JSON.stringify(obj));
+async function verificarRetornoLogin() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const authorizationCode = urlParams.get('code');
+    
+    if (authorizationCode) {
+        // Se houver código na URL, faz a troca pelo Token
+        const token = await trocarCodigoPorToken(authorizationCode);
+        if (token) {
+            iniciarBot(token);
         }
     }
-};
+}
 
-// Inicialização automática
-window.addEventListener('DOMContentLoaded', () => {
-    EXPERT_VISION.processarRetornoCallback();
-});
+// 3. Lógica do WebSocket e Trading
+async function iniciarBot(accessToken) {
+    // Primeiro, obtemos a URL do WebSocket via OTP usando o seu Access Token
+    const wsUrl = await obterWebSocketUrl(accessToken); 
+    
+    socket = new WebSocket(wsUrl);
+
+    socket.onopen = () => {
+        console.log("Robô conectado e autenticado!");
+        configurarAssinaturas(socket);
+    };
+
+    socket.onmessage = (msg) => {
+        const data = JSON.parse(msg.data);
+        processarMensagens(data);
+    };
+}
+
+// 4. Funções de Operação (Buy/Sell/Monitor)
+function processarMensagens(data) {
+    if (data.msg_type === 'proposal') {
+        activeProposalId = data.proposal.id;
+        // Atualize o payout no seu HTML aqui
+    }
+    if (data.msg_type === 'tick') {
+        // Exiba o preço na tela
+        console.log("Tick:", data.tick.quote);
+    }
+    // Adicione os outros filtros (buy, proposal_open_contract)
+}
+
+// INICIALIZAÇÃO AO CARREGAR A PÁGINA
+window.onload = () => {
+    verificarRetornoLogin();
+};
