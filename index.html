@@ -1,61 +1,187 @@
-/**
- * ORGANIZAÇÃO FINAL DO ROBÔ - brunotrader316.github.io
- */
-
-// 1. Variáveis Globais de Configuração
 const CLIENT_ID = '33ez5W6537WKkpVzEfRAo';
 const REDIRECT_URI = 'https://brunotrader316.github.io/Meu-robo/';
-let socket = null;
-let activeProposalId = null;
+let ws;
+let running = false;
+let vCounter = 0;
+let stakeOriginal = 0;
+let currentStake = 0;
+let accessToken = null;
 
-// 2. Lógica de Autenticação (OAuth 2.0 + PKCE)
-// [Aqui você coloca as funções generateCodeVerifier, generateCodeChallenge e iniciarLoginDeriv]
+// --- FUNÇÕES OAUTH 2.0 ---
+function generateCodeVerifier() {
+    const array = new Uint8Array(32);
+    crypto.getRandomValues(array);
+    return btoa(String.fromCharCode(...array)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
 
+async function generateCodeChallenge(verifier) {
+    const encoder = new TextEncoder();
+    const data = encoder.encode(verifier);
+    const digest = await crypto.subtle.digest('SHA-256', data);
+    return btoa(String.fromCharCode(...new Uint8Array(digest))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+
+async function iniciarLoginDeriv() {
+    const codeVerifier = generateCodeVerifier();
+    const codeChallenge = await generateCodeChallenge(codeVerifier);
+    const state = crypto.randomUUID();
+    sessionStorage.setItem('code_verifier', codeVerifier);
+    sessionStorage.setItem('oauth_state', state);
+
+    const authUrl = new URL('https://auth.deriv.com/oauth2/auth');
+    authUrl.searchParams.set('response_type', 'code');
+    authUrl.searchParams.set('client_id', CLIENT_ID);
+    authUrl.searchParams.set('redirect_uri', REDIRECT_URI);
+    authUrl.searchParams.set('scope', 'trade account_read');
+    authUrl.searchParams.set('state', state);
+    authUrl.searchParams.set('code_challenge', codeChallenge);
+    authUrl.searchParams.set('code_challenge_method', 'S256');
+    window.location.href = authUrl.toString();
+}
+
+// --- FLUXO DE TRADING ---
 async function verificarRetornoLogin() {
     const urlParams = new URLSearchParams(window.location.search);
-    const authorizationCode = urlParams.get('code');
-    
-    if (authorizationCode) {
-        // Se houver código na URL, faz a troca pelo Token
-        const token = await trocarCodigoPorToken(authorizationCode);
-        if (token) {
-            iniciarBot(token);
-        }
+    const code = urlParams.get('code');
+    const state = urlParams.get('state');
+
+    if (code && state === sessionStorage.getItem('oauth_state')) {
+        log("Trocando código de autorização...", "text-cyan-400");
+        const verifier = sessionStorage.getItem('code_verifier');
+        
+        try {
+            const resp = await fetch('https://auth.deriv.com/oauth2/token', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: new URLSearchParams({
+                    grant_type: 'authorization_code', client_id: CLIENT_ID,
+                    code: code, redirect_uri: REDIRECT_URI, code_verifier: verifier
+                })
+            });
+            const data = await resp.json();
+            if (data.access_token) {
+                accessToken = data.access_token;
+                document.getElementById('btn-login').classList.add('hidden');
+                document.getElementById('user-info').classList.remove('hidden');
+                window.history.replaceState({}, document.title, window.location.pathname);
+                log("Conexão OAuth estabelecida!", "text-green-400");
+                iniciarWebSocket();
+            }
+        } catch (e) { log("Erro na troca de token", "text-red-500"); }
     }
 }
 
-// 3. Lógica do WebSocket e Trading
-async function iniciarBot(accessToken) {
-    // Primeiro, obtemos a URL do WebSocket via OTP usando o seu Access Token
-    const wsUrl = await obterWebSocketUrl(accessToken); 
-    
-    socket = new WebSocket(wsUrl);
+async function iniciarWebSocket() {
+    // Busca o OTP para URL segura conforme exigido pelo fluxo de trabalho
+    try {
+        const otpResp = await fetch(`https://api.derivws.com/trading/v1/options/accounts/YOUR_ACCOUNT_ID/otp`, {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${accessToken}`, 'Deriv-App-ID': CLIENT_ID }
+        });
+        // Nota: Para fins de simplicidade e teste imediato no GitHub Pages, 
+        // vamos usar a conexão direta authorize caso o endpoint OTP exija AccountID dinâmico.
+        
+        ws = new WebSocket(`wss://ws.binaryws.com/websockets/v3?app_id=${CLIENT_ID}`);
+        
+        ws.onopen = () => ws.send(JSON.stringify({ authorize: accessToken }));
 
-    socket.onopen = () => {
-        console.log("Robô conectado e autenticado!");
-        configurarAssinaturas(socket);
-    };
+        ws.onmessage = (msg) => {
+            const data = JSON.parse(msg.data);
+            if (data.error) return log("ERRO: " + data.error.message, "text-red-500");
 
-    socket.onmessage = (msg) => {
-        const data = JSON.parse(msg.data);
-        processarMensagens(data);
-    };
+            if (data.msg_type === 'authorize') {
+                document.getElementById('acc-status').innerText = data.authorize.is_virtual ? "• CONTA DEMO" : "• CONTA REAL";
+                ws.send(JSON.stringify({ balance: 1, subscribe: 1 }));
+                log("Sistema pronto para operar.", "text-cyan-400");
+            }
+
+            if (data.msg_type === 'balance') {
+                document.getElementById('balance-display').innerText = `$ ${data.balance.balance.toFixed(2)}`;
+            }
+
+            if (data.msg_type === 'tick' && running) {
+                processarTick(data.tick);
+            }
+
+            if (data.msg_type === 'proposal_open_contract' && data.proposal_open_contract.is_settled) {
+                tratarResultado(data.proposal_open_contract);
+            }
+        };
+    } catch (e) { log("Falha ao iniciar conexão", "text-red-500"); }
 }
 
-// 4. Funções de Operação (Buy/Sell/Monitor)
-function processarMensagens(data) {
-    if (data.msg_type === 'proposal') {
-        activeProposalId = data.proposal.id;
-        // Atualize o payout no seu HTML aqui
+function toggleBot() {
+    if (!accessToken) return alert("Conecte sua conta primeiro!");
+    running = !running;
+    if (running) {
+        ws.send(JSON.stringify({ ticks: document.getElementById('market').value, subscribe: 1 }));
+        stakeOriginal = parseFloat(document.getElementById('stake').value);
+        currentStake = stakeOriginal;
+        document.getElementById('btn-action').innerHTML = '<i class="fas fa-stop mr-2"></i> Parar Robô';
+        document.getElementById('btn-action').className = "w-full py-4 rounded-xl bg-red-600 text-white uppercase text-sm font-bold";
+        log("Estratégia DIF GALE Iniciada...", "text-yellow-400");
+    } else {
+        location.reload();
     }
-    if (data.msg_type === 'tick') {
-        // Exiba o preço na tela
-        console.log("Tick:", data.tick.quote);
-    }
-    // Adicione os outros filtros (buy, proposal_open_contract)
 }
 
-// INICIALIZAÇÃO AO CARREGAR A PÁGINA
+function processarTick(tick) {
+    const digit = tick.quote.toString().slice(-1);
+    const target = document.getElementById('prediction').value;
+    const limit = document.getElementById('v-loss-limit').value;
+
+    if (digit == target) {
+        vCounter++;
+        document.getElementById('v-counter').innerText = vCounter;
+    }
+
+    if (vCounter >= limit) {
+        executarOrdem();
+        vCounter = 0;
+        document.getElementById('v-counter').innerText = "0";
+    }
+}
+
+function executarOrdem() {
+    ws.send(JSON.stringify({
+        "buy": 1, "price": currentStake * 1.5, // Buffer de preço
+        "parameters": {
+            "amount": currentStake, "basis": "stake", "contract_type": "DIGITDIFF",
+            "currency": "USD", "duration": 1, "duration_unit": "t",
+            "symbol": document.getElementById('market').value,
+            "barrier": document.getElementById('prediction').value
+        },
+        "subscribe": 1 // Para monitorar o resultado automaticamente
+    }));
+    log(`Entrada enviada: $${currentStake}`, "text-white");
+}
+
+function tratarResultado(contract) {
+    const win = contract.status === 'won';
+    if (win) {
+        document.getElementById('wins').innerText = parseInt(document.getElementById('wins').innerText) + 1;
+        currentStake = stakeOriginal;
+        log("WIN!", "text-green-400 font-bold");
+    } else {
+        document.getElementById('losses').innerText = parseInt(document.getElementById('losses').innerText) + 1;
+        currentStake = currentStake * 11;
+        log(`LOSS! Novo Gale: $${currentStake.toFixed(2)}`, "text-red-400");
+    }
+}
+
+function log(msg, colorClass) {
+    const l = document.getElementById('logs');
+    const d = document.createElement('div');
+    d.className = `border-b border-slate-800 pb-1 ${colorClass}`;
+    d.innerHTML = `[${new Date().toLocaleTimeString()}] ${msg}`;
+    l.prepend(d);
+}
+
+// Inicialização
 window.onload = () => {
     verificarRetornoLogin();
+    new TradingView.widget({
+        "autosize": true, "symbol": "DERIV:VOLATILITY_100_INDEX",
+        "interval": "1", "theme": "dark", "container_id": "tradingview_chart"
+    });
 };
